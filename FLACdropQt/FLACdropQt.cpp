@@ -81,6 +81,8 @@ FLACdropQt::FLACdropQt(QWidget *parent)	: QMainWindow(parent)
 	createMenus();
 	createOptionsWindow();
 
+	for (int i = 0; i < OUT_MAX_THREADS; i++) layout_progressbar_threads[i]->setValue(0); // switch on percentage display at each progressbar
+	
 	// load settings and allocate encoder scheduler
 	readSettings();
 	setAcceptDrops(true);
@@ -88,7 +90,7 @@ FLACdropQt::FLACdropQt(QWidget *parent)	: QMainWindow(parent)
 	encoderScheduler->moveToThread(&controller);
 	connect(encoderScheduler, SIGNAL(setProgressbarValue(int, int)), this, SLOT(setProgressbarValue(int, int)));
 	connect(this, SIGNAL(startEncoding()), encoderScheduler, SLOT(startEncoding()));
-	controller.start();	// start the event loop of the encoder thread scheduler
+	controller.start();	// start the event loop of the thread scheduler
 }
 
 void FLACdropQt::createActions()

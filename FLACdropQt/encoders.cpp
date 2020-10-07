@@ -9,7 +9,7 @@ cScheduler::cScheduler(QApplication* gui_thread)
 
 	connect(this, SIGNAL(setDrop(bool)), gui_window, SLOT(setDrop(bool)));
 
-	// allocate each encoder object and connect signalst to slots
+	// allocate each encoder object and connect signals to slots
 	for (int i = 0; i < OUT_MAX_THREADS; i++)
 	{
 		encoder_list[i] = new encoders();
@@ -39,7 +39,8 @@ void cScheduler::registerThreadFinished(int ID)
 
 void cScheduler::startEncoding()
 {
-	int firstbatch;
+	int parallelthreads, allowedthreads;
+	bool threadStarted;
 
 	// setup each encoder and reset the progressbars
 	for (int i = 0; i < OUT_MAX_THREADS; i++)
@@ -51,44 +52,25 @@ void cScheduler::startEncoding()
 
 	// we first start the max allowed number of threads and after that wait for the thread finished signals to start a new thread
 	// if the number of the dropped files are less than the number of available threads then we start threads only for the dropped files
-	if (ActualSettings.OUT_Threads > pathList.size()) firstbatch = pathList.size();
-	else firstbatch = ActualSettings.OUT_Threads;
+	ActualSettings.OUT_Threads > pathList.size() ? allowedthreads = pathList.size() : allowedthreads = ActualSettings.OUT_Threads;
+	pathlistPosition = 0;
+	parallelthreads = 0;
 
-	for (int i = 0; i < firstbatch; i++) startSingleThread(pathList.at(i));
-	pathlistPosition = firstbatch;
-}
-
-// TODO: check only the actual extension of the file, do not search the entire path string
-void cScheduler::startSingleThread(const QString& droppedfile)
-{
-
-	//encoder_list[thread_slot]->setID(thread_slot);
-
-	// encode WAV to FLAC or MP3
-	if (droppedfile.contains(".wav", Qt::CaseInsensitive))
+	while ((parallelthreads < allowedthreads) && (pathlistPosition < pathList.size()))
 	{
-		int thread_slot = 0;
-		while (thread_status[thread_slot] == true) thread_slot++;		// search for an available encoder
-		
-		encoder_list[thread_slot]->addFile(droppedfile);
-		encoder_list[thread_slot]->setInputFileType(FILE_TYPE_WAV);
-		thread_status[thread_slot] = true;
-		encoder_list[thread_slot]->start();
+		threadStarted = startSingleThread(pathList.at(pathlistPosition));
+		pathlistPosition++;
+		if (threadStarted == true) parallelthreads++;
 	}
 
-	// encode FLAC to MP3 or WAV
-	if (droppedfile.contains(".flac", Qt::CaseInsensitive))
-	{
-		int thread_slot = 0;
-		while (thread_status[thread_slot] == true) thread_slot++;		// search for an available encoder
-		
-		encoder_list[thread_slot]->addFile(droppedfile);
-		encoder_list[thread_slot]->setInputFileType(FILE_TYPE_FLAC);
-		thread_status[thread_slot] = true;
-		encoder_list[thread_slot]->start();
-	}
+	// check if a thread is running, if not then enable drag&drop
+	threadStarted = false;
+	for (int i = 0; i < OUT_MAX_THREADS; i++)
+		if (thread_status[i] == true) threadStarted = true;
+	if (threadStarted == false) emit setDrop(true);
 }
 
+// slot for a finished thread signal, we can start the next thread
 void cScheduler::startNewThread()
 {
 	if (pathlistPosition < pathList.size())
@@ -98,9 +80,45 @@ void cScheduler::startNewThread()
 	}
 	else
 	{
-		// all files have been encoded so now we can accept new drops
+		// all files have been encoded so now we can enable drag&drop
 		emit setDrop(true);
 	}
+}
+
+// TODO: check only the actual extension of the file, do not search the entire path string
+bool cScheduler::startSingleThread(const QString& droppedfile)
+{
+	bool threadWasStarted = false;
+
+	// dropped file is WAV
+	if (droppedfile.contains(".wav", Qt::CaseInsensitive))
+	{
+		int thread_slot = 0;
+		while (thread_status[thread_slot] == true) thread_slot++;		// search for an available encoder
+		
+		encoder_list[thread_slot]->addFile(droppedfile);
+		encoder_list[thread_slot]->setInputFileType(FILE_TYPE_WAV);
+		thread_status[thread_slot] = true;
+		encoder_list[thread_slot]->start();
+
+		threadWasStarted = true;
+	}
+
+	// dropped file is FLAC
+	if (droppedfile.contains(".flac", Qt::CaseInsensitive))
+	{
+		int thread_slot = 0;
+		while (thread_status[thread_slot] == true) thread_slot++;		// search for an available encoder
+		
+		encoder_list[thread_slot]->addFile(droppedfile);
+		encoder_list[thread_slot]->setInputFileType(FILE_TYPE_FLAC);
+		thread_status[thread_slot] = true;
+		encoder_list[thread_slot]->start();
+
+		threadWasStarted = true;
+	}
+
+	return threadWasStarted;
 }
 
 //---------------------------------------------------------------------------------

@@ -174,7 +174,7 @@ private slots:
 	void startEncoding();
 
 private:
-	void startSingleThread(const QString& droppedfile);
+	bool startSingleThread(const QString& droppedfile);
 
 	QApplication* gui_window;
 	QStringList pathList;
