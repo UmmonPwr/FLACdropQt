@@ -96,6 +96,7 @@
   <ItemGroup>
     <ClCompile Include="encoders.cpp" />
     <ClCompile Include="FLACdropQt.cpp" />
+    <ClCompile Include="libFLAC_callbacks.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="io.cpp" />
     <ClCompile Include="window_about.cpp" />

@@ -17,7 +17,7 @@ cScheduler::cScheduler(QApplication* gui_thread)
 
 		connect(encoder_list[i], SIGNAL(setProgressbarLimits(int, int, int)), gui_window, SLOT(setProgressbarLimits(int, int, int)));
 		connect(encoder_list[i], SIGNAL(setProgressbarValue(int, int)), gui_window, SLOT(setProgressbarValue(int, int)));
-		connect(encoder_list[i], SIGNAL(registerThreadFinished(int)), this, SLOT(registerThreadFinished(int)));
+		connect(encoder_list[i], SIGNAL(ThreadFinished(int)), this, SLOT(ThreadFinished(int)));
 		connect(encoder_list[i], SIGNAL(finished()), this, SLOT(startNewThread()));
 	}
 }
@@ -32,11 +32,12 @@ void cScheduler::addEncoderSettings(sFLACdropQtSettings encSettings)
 	ActualSettings = encSettings;
 }
 
-void cScheduler::registerThreadFinished(int ID)
+void cScheduler::ThreadFinished(int ID)
 {
 	thread_status[ID] = false;
 }
 
+// run when drag&drop is initiated
 void cScheduler::startEncoding()
 {
 	int parallelthreads, allowedthreads;
@@ -58,37 +59,37 @@ void cScheduler::startEncoding()
 
 	while ((parallelthreads < allowedthreads) && (pathlistPosition < pathList.size()))
 	{
-		threadStarted = startSingleThread(pathList.at(pathlistPosition));
+		threadStarted = Encoder(pathList.at(pathlistPosition));
 		pathlistPosition++;
 		if (threadStarted == true) parallelthreads++;
 	}
 
-	// check if a thread is running, if not then enable drag&drop
+	// check if at least a thread is running, if not then enable drag&drop
 	threadStarted = false;
 	for (int i = 0; i < OUT_MAX_THREADS; i++)
 		if (thread_status[i] == true) threadStarted = true;
 	if (threadStarted == false) emit setDrop(true);
 }
 
-// slot for a finished thread signal, we can start the next thread
+// run when a finished thread signal was emitted
 void cScheduler::startNewThread()
 {
-	if (pathlistPosition < pathList.size())
+	bool threadStarted = false;
+
+	while ((threadStarted == false) && (pathlistPosition < pathList.size()))
 	{
-		startSingleThread(pathList.at(pathlistPosition));
+		threadStarted = Encoder(pathList.at(pathlistPosition));
 		pathlistPosition++;
 	}
-	else
-	{
-		// all files have been encoded so now we can enable drag&drop
-		emit setDrop(true);
-	}
+	
+	if (pathlistPosition == pathList.size()) emit setDrop(true);	// we were not able to start a new thread so we can enable drag&drop
 }
 
 // TODO: check only the actual extension of the file, do not search the entire path string
-bool cScheduler::startSingleThread(const QString& droppedfile)
+// choose which encoder to run based on the path string
+bool cScheduler::Encoder(const QString& droppedfile)
 {
-	bool threadWasStarted = false;
+	bool threadStarted = false;
 
 	// dropped file is WAV
 	if (droppedfile.contains(".wav", Qt::CaseInsensitive))
@@ -101,7 +102,7 @@ bool cScheduler::startSingleThread(const QString& droppedfile)
 		thread_status[thread_slot] = true;
 		encoder_list[thread_slot]->start();
 
-		threadWasStarted = true;
+		threadStarted = true;
 	}
 
 	// dropped file is FLAC
@@ -115,22 +116,15 @@ bool cScheduler::startSingleThread(const QString& droppedfile)
 		thread_status[thread_slot] = true;
 		encoder_list[thread_slot]->start();
 
-		threadWasStarted = true;
+		threadStarted = true;
 	}
 
-	return threadWasStarted;
+	return threadStarted;
 }
 
 //---------------------------------------------------------------------------------
-// Encoder class definitions
+// Encoders class definitions
 //---------------------------------------------------------------------------------
-encoders::encoders()
-{
-	// only to prevent compiler warning
-	inputFileType = 0;
-	ID = 0;
-}
-
 void encoders::addEncoderSettings(sFLACdropQtSettings encparams)
 {
 	settings = encparams;
@@ -157,30 +151,26 @@ void encoders::run()
 	switch (settings.OUT_Type)
 	{
 		case FILE_TYPE_FLAC:
-			switch (inputFileType)
-			{
-				case FILE_TYPE_WAV:
-					wav2flac();
-					break;
-				case FILE_TYPE_MP3:
-					break;
-			}
-			break;
-		
-		case FILE_TYPE_MP3:
+			if (inputFileType == FILE_TYPE_WAV) wav2flac();
 			break;
 		
 		case FILE_TYPE_WAV:
+			if (inputFileType == FILE_TYPE_FLAC) flac2wav();
+			break;
+		
+		case FILE_TYPE_MP3:
+			//if (inputFileType == FILE_TYPE_FLAC) flac2mp3();
+			//if (inputFileType == FILE_TYPE_WAV) wav2mp3();
 			break;
 	}
 }
 
 //---------------------------------------------------------------------------------
-// Encoder algorithms
+// Encoder algorithms: WAV -> FLAC
 //---------------------------------------------------------------------------------
 void encoders::wav2flac()
 {
-	FLAC::Encoder::Stream* encoder = NULL;
+	libflac_StreamEncoder* encoder = NULL;
 	FILE* fin, *fout;
 	int err = ALL_OK;
 
@@ -190,7 +180,7 @@ void encoders::wav2flac()
 	sDATAheader DATAheader;
 	unsigned int total_samples = 0;		// can use a 32-bit number due to WAV file size limitation in the specification
 
-	// WAV: open the wave file
+	// WAV: open the input WAVE file
 	{
 		WCHAR* wchar_infile;
 
@@ -252,11 +242,7 @@ void encoders::wav2flac()
 			break;
 		case WAV_FORMAT_EXTENSIBLE:
 			// in this case the first two byte of the SubFormat is defining the audio format
-			if (FMTheader.SubFormat_AudioFormat == WAV_FORMAT_PCM)
-			{
-				break;
-			}
-			else
+			if (FMTheader.SubFormat_AudioFormat != WAV_FORMAT_PCM)
 			{
 				fclose(fin);
 				err = FAIL_WAV_UNSUPPORTED;
@@ -294,14 +280,11 @@ void encoders::wav2flac()
 		total_samples = DATAheader.ChunkSize / FMTheader.NumChannels / (FMTheader.BitsPerSample / 8);	// sound data's size divided by one sample's size
 	}
 
-	// libFLAC: allocate the libFLAC encoder and data buffers
+	// libFLAC: allocate the libFLAC encoder
 	if (err == ALL_OK)
 	{
-		bool ok = TRUE;
-
 		encoder = new libflac_StreamEncoder();
-		ok = encoder->is_valid();
-		if (ok == false)
+		if (encoder->is_valid() == false)
 		{
 			fclose(fin);
 			delete encoder;
@@ -312,7 +295,7 @@ void encoders::wav2flac()
 	// libFLAC: set the encoder parameters
 	if (err == ALL_OK)
 	{
-		bool ok = TRUE;
+		bool ok = true;
 
 		ok &= encoder->set_verify(settings.FLAC_Verify);
 		ok &= encoder->set_compression_level(settings.FLAC_EncodingQuality);
@@ -373,12 +356,9 @@ void encoders::wav2flac()
 		}
 		else
 		{
-			FLAC__StreamEncoderInitStatus init_status;
-
-			dynamic_cast<libflac_StreamEncoder*>(encoder)->file_ = fout;
-			init_status = encoder->init();
-
-			if (init_status != FLAC__STREAM_ENCODER_INIT_STATUS_OK)
+			//dynamic_cast<libflac_StreamEncoder*>(encoder)->file_ = fout;
+			encoder->file_ = fout;
+			if (encoder->init() != FLAC__STREAM_ENCODER_INIT_STATUS_OK)
 			{
 				fclose(fin);
 				fclose(fout);
@@ -441,12 +421,11 @@ void encoders::wav2flac()
 					}
 					break;
 				}
-
-				// feed samples to the encoder
-				ok = encoder->process_interleaved(buffer_flac, need);
+				
+				ok = encoder->process_interleaved(buffer_flac, need);	// feed samples to the encoder
 				if (ok == false) err = FAIL_LIBFLAC_ENCODE;
-				// increase the progress bar
-				emit setProgressbarValue(ID, ProgressBarPos++);
+				
+				emit setProgressbarValue(ID, ProgressBarPos++);	// increase the progress bar
 			}
 			left -= need;
 		}
@@ -456,73 +435,163 @@ void encoders::wav2flac()
 			
 	if (err == ALL_OK)
 	{
-		bool ok;
-
-		ok = encoder->finish();
-		if (ok == false) err = FAIL_LIBFLAC_RELEASE;
+		if (encoder->finish() == false) err = FAIL_LIBFLAC_RELEASE;
 		// now that encoding is finished, the metadata can be freed
 		//FLAC__metadata_object_delete(metadata[0]);
 		//FLAC__metadata_object_delete(metadata[1]);
-		delete encoder;
 		fclose(fin);
 		fclose(fout);
+		delete encoder;
 	}
 
-	emit registerThreadFinished(ID);
+	emit ThreadFinished(ID);
 }
 
 //---------------------------------------------------------------------------------
-// libflac callbacks
+// Encoder algorithms: FLAC -> WAV
 //---------------------------------------------------------------------------------
-::FLAC__StreamEncoderReadStatus libflac_StreamEncoder::read_callback(FLAC__byte buffer[], size_t* bytes)
+void encoders::flac2wav()
 {
-	if (*bytes > 0) {
-		*bytes = fread(buffer, sizeof(FLAC__byte), *bytes, file_);
-		if (ferror(file_))
-			return ::FLAC__STREAM_ENCODER_READ_STATUS_ABORT;
-		else if (*bytes == 0)
-			return ::FLAC__STREAM_ENCODER_READ_STATUS_END_OF_STREAM;
+	libflac_StreamDecoder* decoder = NULL;
+	FILE* fin, * fout;
+	int err = ALL_OK;
+
+	// libFLAC: allocate the decoder
+	{
+		decoder = new libflac_StreamDecoder();
+		if (decoder->is_valid() == false)
+		{
+			delete decoder;
+			err = FAIL_LIBFLAC_ALLOC;
+		}
+	}
+
+	// libFLAC: set decoder parameters
+	if (err == ALL_OK)
+	{
+		decoder->set_md5_checking(settings.FLAC_MD5check);
+	}
+
+	// libFLAC: open the input FLAC file
+	if (err == ALL_OK)
+	{
+		WCHAR* wchar_infile;
+
+		wchar_infile = new WCHAR[MAXFILENAMELENGTH];
+		infile.toWCharArray(wchar_infile);
+		wchar_infile[infile.length()] = 0;	// must add the closing 0 to have correctly prepared wchar array
+		if ((_wfopen_s(&fin, wchar_infile, L"rb")) != NULL)
+		{
+			delete decoder;
+			err = FAIL_FILE_OPEN;
+		}
 		else
-			return ::FLAC__STREAM_ENCODER_READ_STATUS_CONTINUE;
+		{
+			decoder->file_ = fin;
+		}
+
+		delete[]wchar_infile;
 	}
-	else
-		return ::FLAC__STREAM_ENCODER_READ_STATUS_ABORT;
-}
 
-::FLAC__StreamEncoderWriteStatus libflac_StreamEncoder::write_callback(const FLAC__byte buffer[], size_t bytes, uint32_t samples, uint32_t current_frame)
-{
-	(void)samples, (void)current_frame;
-
-	if (fwrite(buffer, 1, bytes, file_) != bytes)
-		return ::FLAC__STREAM_ENCODER_WRITE_STATUS_FATAL_ERROR;
-	else
-		return ::FLAC__STREAM_ENCODER_WRITE_STATUS_OK;
-}
-
-::FLAC__StreamEncoderSeekStatus libflac_StreamEncoder::seek_callback(FLAC__uint64 absolute_byte_offset)
-{
-	/*if (layer_ == LAYER_STREAM)
-		return ::FLAC__STREAM_ENCODER_SEEK_STATUS_UNSUPPORTED;
-	else*/ if (_fseeki64(file_, absolute_byte_offset, SEEK_SET) < 0)
-		return FLAC__STREAM_ENCODER_SEEK_STATUS_ERROR;
-	else
-		return FLAC__STREAM_ENCODER_SEEK_STATUS_OK;
-}
-
-::FLAC__StreamEncoderTellStatus libflac_StreamEncoder::tell_callback(FLAC__uint64* absolute_byte_offset)
-{
-	long long pos;
-	/*if (layer_ == LAYER_STREAM)
-		return ::FLAC__STREAM_ENCODER_TELL_STATUS_UNSUPPORTED;
-	else*/ if ((pos = _ftelli64(file_)) < 0)
-		return FLAC__STREAM_ENCODER_TELL_STATUS_ERROR;
-	else {
-		*absolute_byte_offset = (FLAC__uint64)pos;
-		return FLAC__STREAM_ENCODER_TELL_STATUS_OK;
+	// libFLAC: initialize decoder
+	if (err == ALL_OK)
+	{
+		if (decoder->init() != FLAC__STREAM_DECODER_INIT_STATUS_OK)
+		{
+			fclose(fin);
+			delete decoder;
+			err = FAIL_LIBFLAC_ALLOC;
+		}
 	}
-}
 
-void libflac_StreamEncoder::metadata_callback(const ::FLAC__StreamMetadata* metadata)
-{
-	(void)metadata;
+	// libFLAC: check the FLAC file parameters
+	if (err == ALL_OK)
+	{
+		// check if the first block really contained the metadata
+		if (decoder->process_until_end_of_metadata() == false)
+		{
+			fclose(fin);
+			delete decoder;
+			err = FAIL_LIBFLAC_DECODE;
+		}
+	}
+	if (err == ALL_OK)
+	{
+		// check if FLAC file has 16 or 24 bit resolution
+		switch (decoder->get_bits_per_sample_clientdata())
+		{
+		case 16:
+		case 24:
+			break;
+		default:
+			fclose(fin);
+			delete decoder;
+			err = FAIL_LIBFLAC_ONLY_16_24_BIT;
+		}
+	}
+	if (err == ALL_OK)
+	{
+		// check if total_samples count is in the STREAMINFO
+		if (decoder->get_total_samples() == 0)
+		{
+			fclose(fin);
+			delete decoder;
+			err = FAIL_LIBFLAC_BAD_HEADER;
+		}
+	}
+
+	// libFLAC: open output file
+	if (err == ALL_OK)
+	{
+		WCHAR* wchar_infile, * wchar_outfile;
+
+		// open the output file
+		wchar_infile = new WCHAR[MAXFILENAMELENGTH];
+		infile.toWCharArray(wchar_infile);
+		wchar_infile[infile.length()] = 0;	// must add the closing 0 to have correctly prepared wchar array
+
+		wchar_outfile = new WCHAR[MAXFILENAMELENGTH];
+		wcsncpy_s(wchar_outfile, MAXFILENAMELENGTH, wchar_infile, wcsnlen(wchar_infile, MAXFILENAMELENGTH) - 4);	// leave out the "flac" from the end
+		wcscat_s(wchar_outfile, MAXFILENAMELENGTH, L"wav");
+		if ((_wfopen_s(&fout, wchar_outfile, L"w+b")) != NULL)
+		{
+			fclose(fin);
+			delete decoder;
+			err = FAIL_LIBFLAC_DECODE;
+		}
+		else decoder->addOutputFile(fout);
+
+		delete[]wchar_outfile;
+		delete[]wchar_infile;
+	}
+
+	// libFLAC: start the decoding
+	if (err == ALL_OK)
+	{
+		bool ok;
+		FLAC__StreamDecoderState state;
+		int ProgressBarPos = 0;
+
+		emit setProgressbarLimits(ID, 0, decoder->get_total_samples() / decoder->get_blocksize_clientdata());	// set up the progress bar boundaries, block size is around 4k depending on resolution
+		emit setProgressbarValue(ID, 0);
+
+		// loop the decoder until it reaches the end of the input file or returns an error
+		do
+		{
+			ok = decoder->process_single();
+			state = decoder->get_state();
+			emit setProgressbarValue(ID, ProgressBarPos++);	// increase the progress bar
+		} while ((state != FLAC__STREAM_DECODER_END_OF_STREAM && FLAC__STREAM_DECODER_SEEK_ERROR && FLAC__STREAM_DECODER_ABORTED && FLAC__STREAM_DECODER_MEMORY_ALLOCATION_ERROR) && ok == true);
+	}
+
+	// libFLAC: close the decoder
+	if (err == ALL_OK)
+	{
+		if (decoder->finish()== false) err = FAIL_LIBFLAC_RELEASE;
+		fclose(fin);
+		fclose(fout);
+		delete decoder;
+	}
+
+	emit ThreadFinished(ID);
 }

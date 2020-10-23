@@ -1,5 +1,6 @@
 #include "FLAC\stream_encoder.h"
 #include "FLAC++\encoder.h"
+#include "FLAC++\decoder.h"
 
 #include <QtWidgets>
 
@@ -72,14 +73,14 @@ struct sFLACdropQtSettings
 };
 
 //---------------------------------------------------------------------------------
-// Encoder algorithms
+// Wrapper for encoder algorithms
 //---------------------------------------------------------------------------------
 class encoders : public QThread
 {
 	Q_OBJECT
 
 public:
-	encoders();
+	encoders(){}
 	void addFile(QString encfile);
 	void addEncoderSettings(sFLACdropQtSettings encparams);
 	void setInputFileType(int in);
@@ -89,10 +90,13 @@ public:
 signals:
 	void setProgressbarLimits(int ID, int min, int max);
 	void setProgressbarValue(int ID, int value);
-	void registerThreadFinished(int ID);
+	void ThreadFinished(int ID);
 
 private:
 	void wav2flac();
+	void flac2wav();
+	//void flac2mp3();
+	//void wav2mp3();
 
 	// wave file header
 	struct sWAVEheader
@@ -133,25 +137,6 @@ private:
 	int ID;
 };
 
-class libflac_StreamEncoder : public FLAC::Encoder::Stream
-{
-	public:
-		FILE* file_;
-
-		libflac_StreamEncoder() : FLAC::Encoder::Stream(), file_(0) { }
-		~libflac_StreamEncoder() { }
-
-		// callback functions for libFLAC encoder stream handling
-		::FLAC__StreamEncoderReadStatus read_callback(FLAC__byte buffer[], size_t* bytes);
-		::FLAC__StreamEncoderWriteStatus write_callback(const FLAC__byte buffer[], size_t bytes, uint32_t samples, uint32_t current_frame);
-		::FLAC__StreamEncoderSeekStatus seek_callback(FLAC__uint64 absolute_byte_offset);
-		::FLAC__StreamEncoderTellStatus tell_callback(FLAC__uint64* absolute_byte_offset);
-		void metadata_callback(const ::FLAC__StreamMetadata* metadata);
-	private:
-		libflac_StreamEncoder(const libflac_StreamEncoder&);
-		//StreamEncoder& operator=(const StreamEncoder&);
-};
-
 //---------------------------------------------------------------------------------
 // Encoder thread scheduler
 //---------------------------------------------------------------------------------
@@ -169,12 +154,12 @@ signals:
 	void setDrop(bool state);
 
 private slots:
-	void registerThreadFinished(int ID);
+	void ThreadFinished(int ID);
 	void startNewThread();
 	void startEncoding();
 
 private:
-	bool startSingleThread(const QString& droppedfile);
+	bool Encoder(const QString& droppedfile);
 
 	QApplication* gui_window;
 	QStringList pathList;
@@ -182,4 +167,100 @@ private:
 	encoders* encoder_list[OUT_MAX_THREADS];
 	bool thread_status[OUT_MAX_THREADS];
 	int pathlistPosition;
+};
+
+//---------------------------------------------------------------------------------
+// libFLAC classes
+//---------------------------------------------------------------------------------
+class libflac_StreamEncoder : public FLAC::Encoder::Stream
+{
+public:
+	FILE* file_;
+
+	libflac_StreamEncoder() : FLAC::Encoder::Stream(), file_(0) { }
+	~libflac_StreamEncoder() { }
+
+	// callback functions for libFLAC encoder stream handling
+	::FLAC__StreamEncoderReadStatus read_callback(FLAC__byte buffer[], size_t* bytes);
+	::FLAC__StreamEncoderWriteStatus write_callback(const FLAC__byte buffer[], size_t bytes, uint32_t samples, uint32_t current_frame);
+	::FLAC__StreamEncoderSeekStatus seek_callback(FLAC__uint64 absolute_byte_offset);
+	::FLAC__StreamEncoderTellStatus tell_callback(FLAC__uint64* absolute_byte_offset);
+	void metadata_callback(const ::FLAC__StreamMetadata* metadata);
+
+private:
+	libflac_StreamEncoder(const libflac_StreamEncoder&);
+	//StreamEncoder& operator=(const StreamEncoder&);
+};
+
+class libflac_StreamDecoder : public FLAC::Decoder::Stream
+{
+public:
+	FILE* file_;
+
+	libflac_StreamDecoder() : FLAC::Decoder::Stream(), file_(0) { }
+	~libflac_StreamDecoder() { }
+
+	unsigned int get_bits_per_sample_clientdata();
+	unsigned int get_blocksize_clientdata();
+	void addOutputFile(FILE* f);
+	
+	// callback functions for libFLAC encoder stream handling
+	::FLAC__StreamDecoderReadStatus read_callback(FLAC__byte buffer[], size_t* bytes);
+	::FLAC__StreamDecoderWriteStatus write_callback(const ::FLAC__Frame* frame, const FLAC__int32* const buffer[]);
+	::FLAC__StreamDecoderSeekStatus seek_callback(FLAC__uint64 absolute_byte_offset);
+	::FLAC__StreamDecoderTellStatus tell_callback(FLAC__uint64* absolute_byte_offset);
+	::FLAC__StreamDecoderLengthStatus length_callback(FLAC__uint64* stream_length);
+	bool eof_callback();
+	void metadata_callback(const ::FLAC__StreamMetadata* metadata);
+	void error_callback(::FLAC__StreamDecoderErrorStatus status);
+
+private:
+	libflac_StreamDecoder(const libflac_StreamDecoder&);
+	//libflac_StreamDecoder& operator=(const libflac_StreamDecoder&);
+
+	// wave file header
+	struct sWAVEheader
+	{
+		char ChunkID[4];		// "RIFF"
+		int ChunkSize;			// size of the complete WAVE file
+		char Format[4];			// "WAVE"
+	};
+	
+	// wave file format chunk header
+	struct sFMTheader
+	{
+		char ChunkID[4];				// "fmt "
+		int ChunkSize;					// 16, 18 or 40 bytes
+		unsigned short AudioFormat;		// data format code
+		short NumChannels;
+		int SampleRate;
+		int ByteRate;					// SampleRate * NumChannels * BitsPerSample/8
+		short BlockAlign;				// NumChannels * BitsPerSample/8
+		short BitsPerSample;
+		short ExtensionSize;			// Size of the extension (0 or 22 bytes)
+		short ValidBitsPerSample;
+		int ChannelMask;				// Speaker position mask
+		short SubFormat_AudioFormat;	// data format code
+		char SubFormat_GUID[14];
+	};
+
+	// wave file data chunk header
+	struct sDATAheader
+	{
+		char ChunkID[4];		// "data"
+		int ChunkSize;			// NumSamples * NumChannels * BitsPerSample/8
+	};
+
+	struct sClientData
+	{
+		FILE* fout;
+		//BYTE* buffer_out;
+		FLAC__uint64 total_samples;
+		unsigned int sample_rate;
+		unsigned int channels;
+		unsigned int bps;
+		unsigned int blocksize;
+	};
+
+	sClientData client_data;
 };

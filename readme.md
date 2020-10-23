@@ -6,8 +6,9 @@ The number of allowed parallel threads are hardcoded into the source code by "OU
 
 Currently it can convert:
 - from WAV to FLAC
+- from FLAC to WAV
 
 FLACdrop is using the below libraries. Only the headers and the pre-built lib files are included:
-- Qt 5.15
+- Qt 5.15 ( https://www.qt.io/ )
 - libflac 1.3.2 GitHub version ( https://github.com/xiph/flac )
 - libogg 1.3.3 GitHub version ( https://github.com/xiph/ogg )
