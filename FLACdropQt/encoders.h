@@ -38,10 +38,11 @@
 #define FAIL_REGISTRY_WRITE			13
 #define FAIL_REGISTRY_READ			14
 #define FAIL_LAME_ONLY_16_BIT		15
-#define FAIL_LAME_INIT				16
-#define FAIL_LAME_ID3TAG			17
-#define FAIL_LAME_ENCODE			18
-#define FAIL_LAME_CLOSE				19
+#define FAIL_LAME_MAX_2_CHANNEL		16
+#define FAIL_LAME_INIT				17
+#define FAIL_LAME_ID3TAG			18
+#define FAIL_LAME_ENCODE			19
+#define FAIL_LAME_CLOSE				20
 
 // WAVE file audio formats
 // http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html

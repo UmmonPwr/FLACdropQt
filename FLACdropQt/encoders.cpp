@@ -431,7 +431,8 @@ void encoders::wav2flac()
 		delete[]buffer_wav;
 		delete[]buffer_flac;
 	}
-			
+
+	// libFLAC: close the encoder
 	if (err == ALL_OK)
 	{
 		if (encoder->finish() == false) err = FAIL_LIBFLAC_RELEASE;
@@ -684,17 +685,17 @@ void encoders::wav2mp3()
 		}
 	}
 
-	// WAV: check if the file has 16 or 24 bit resolution
+	// WAV: check if the WAVE file has 16 bit resolution, MP3 stream does not support 24 bit
 	if (err == ALL_OK)
 	{
 		switch (FMTheader.BitsPerSample)
 		{
 		case 16:
-		case 24:
 			break;
+		case 24:
 		default:
 			fclose(fin);
-			err = FAIL_LIBFLAC_ONLY_16_24_BIT;
+			err = FAIL_LAME_ONLY_16_BIT;
 		}
 	}
 
@@ -726,14 +727,21 @@ void encoders::wav2mp3()
 	{
 		switch (FMTheader.NumChannels)
 		{
-			case 1:
-				lame_set_mode(lame_gfp, MONO);
-				break;
-			case 2:
-				lame_set_mode(lame_gfp, JOINT_STEREO);
-				break;
+		case 1:
+			lame_set_mode(lame_gfp, MONO);
+			break;
+		case 2:
+			lame_set_mode(lame_gfp, JOINT_STEREO);
+			break;
+		default:
+			// only mono and stereo streams are supported by libmp3lame
+			fclose(fin);
+			err = FAIL_LAME_MAX_2_CHANNEL;
+			break;
 		}
-
+	}
+	if (err == ALL_OK)
+	{
 		// Internal algorithm selection. True quality is determined by the bitrate but this variable will effect quality by selecting expensive or cheap algorithms.
 		// quality=0..9.  0=best (very slow).  9=worst.
 		// recommended:  2     near-best quality, not too slow
@@ -892,10 +900,19 @@ void encoders::wav2mp3()
 
 		delete[]buffer_wav;
 		delete[]buffer_mp3;
+	
+		if (ok == false)
+		{
+			fclose(fin);
+			fclose(fout);
+			err = FAIL_LAME_ENCODE;
+		}
 	}
 
+	// libmp3lame: close encoder
 	if (err == ALL_OK)
 	{
+		if (lame_close(lame_gfp) != 0) err = FAIL_LAME_CLOSE;
 		fclose(fin);
 		fclose(fout);
 	}
