@@ -11,6 +11,13 @@
 
 #include "encoders.h"
 
+// default values for system variables of libflac
+#define FLAC_ENCODINGQUALITY 6		// 1..8, recommended: 6
+#define FLAC_MINENCODINGQUALITY 1
+#define FLAC_MAXENCODINGQUALITY 8
+#define FLAC_VERIFY false
+#define FLAC_MD5CHECK true
+
 // default values for system variables of libmp3lame
 #define LAME_FLUSH true
 #define LAME_NOGAP false
@@ -24,14 +31,10 @@
 #define LAME_ENCODINGMODE 0
 #define LAME_ENCODINGMODE_CBR 0
 #define LAME_ENCODINGMODE_VBR 1
+
+// default values for thread scheduler
 #define OUT_TYPE 0
 #define OUT_THREADS 4
-
-const QString LAME_CBRBITRATES_TEXT[]= {
-	"48", "64", "80", "96", "112", "128", "160", "192", "224", "256", "320"};
-const int LAME_CBRBITRATES[] = {
-	48, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 };
-#define LAME_CBRBITRATES_QUANTITY 11	// quantity of items in "LAME_CBRBITRATES" array
 
 // file formats handled by the app
 const QString OUT_TYPE_NAMES[] = {
@@ -80,11 +83,13 @@ private:
 	void createOptionsWindow();
 	void readSettings();
 
+	sFLACdropQtSettings FLACdropQtSettings;	// global settings
+	
+	// encoder scheduler
+	cScheduler* encoderScheduler;
 	QThread controller;
 
-	sFLACdropQtSettings FLACdropQtSettings;	// global settings
-	cScheduler* encoderScheduler;
-
+	// menu bar
 	QMenu* menu_file;
 	QMenu* menu_log;
 	QMenu* menu_help;
@@ -114,6 +119,7 @@ private:
 	QIcon* icon_FLACdrop;
 	QPixmap* pixmap_FLACdropQt;
 
+	QProgressBar* layout_progressbar_total;
 	QProgressBar* layout_progressbar_threads[OUT_MAX_THREADS];
 	QRadioButton* layout_radiobutton_outputtypes[FILE_TYPE_QUANTITY];
 
@@ -158,6 +164,7 @@ private:
 	Ui::FLACdropQtClass ui;
 };
 
+// load embedded resource
 class Resource
 {
 public:

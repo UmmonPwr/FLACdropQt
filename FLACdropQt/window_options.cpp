@@ -1,5 +1,7 @@
 #include "FLACdropQt.h"
 
+#define OUT_MIN_THREADS 1
+
 void FLACdropQt::createOptionsWindow()
 {
 	// create main layout for options window

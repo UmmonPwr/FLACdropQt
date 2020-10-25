@@ -1,6 +1,7 @@
 #include "FLAC\stream_encoder.h"
 #include "FLAC++\encoder.h"
 #include "FLAC++\decoder.h"
+#include "lame.h"
 
 #include <QtWidgets>
 
@@ -10,13 +11,17 @@
 #define FILE_TYPE_WAV		2
 #define FILE_TYPE_QUANTITY	3
 
+// encoder internal buffer sizes
 #define READSIZE_FLAC 1048576		// size of a block to read from disk in bytes for the FLAC encoder algorithm
 #define READSIZE_MP3 8192			// size of a block to read from disk in bytes for the MP3 encoder algorithm
 #define SIZE_RAW_BUFFER 32768		// size of raw audio data buffer for transcoding
 #define MAXMETADATA 1024			// maximum character size of metadata string
 #define MAXFILENAMELENGTH 1024		// maximum size of a file name with full path
-#define EVENTLOGSIZE 65536			// maximum character size of the event log
+//#define EVENTLOGSIZE 65536			// maximum character size of the event log
 
+#define OUT_MAX_THREADS 8			// maximum number of batch processing threads
+
+// failure codes
 #define ALL_OK						0
 #define FAIL_FILE_OPEN				1
 #define FAIL_WAV_BAD_HEADER			2
@@ -38,7 +43,7 @@
 #define FAIL_LAME_ENCODE			18
 #define FAIL_LAME_CLOSE				19
 
-//WAVE file audio formats
+// WAVE file audio formats
 // http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
 #define WAV_FORMAT_PCM			0x0001	// PCM
 #define WAV_FORMAT_IEEE_FLOAT	0x0003	// IEEE float
@@ -46,16 +51,12 @@
 #define WAV_FORMAT_MULAW		0x0007	// 8 - bit ITU - T G.711 µ - law
 #define WAV_FORMAT_EXTENSIBLE	0xFFFE	// Determined by SubFormat
 
-// default values for system variables of libflac
-#define FLAC_ENCODINGQUALITY 6		// 1..8, recommended: 6
-#define FLAC_MINENCODINGQUALITY 1
-#define FLAC_MAXENCODINGQUALITY 8
-#define FLAC_VERIFY false
-#define FLAC_MD5CHECK true
-
-// default values for thread scheduler
-#define OUT_MIN_THREADS 1
-#define OUT_MAX_THREADS 8			// maximum number of batch processing threads
+// libmp3lame CBR encoding bitrates
+const QString LAME_CBRBITRATES_TEXT[] = {
+	"48", "64", "80", "96", "112", "128", "160", "192", "224", "256", "320" };
+const int LAME_CBRBITRATES[] = {
+	48, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 };
+#define LAME_CBRBITRATES_QUANTITY 11	// quantity of items in "LAME_CBRBITRATES" array
 
 struct sFLACdropQtSettings
 {
@@ -95,8 +96,8 @@ signals:
 private:
 	void wav2flac();
 	void flac2wav();
-	//void flac2mp3();
-	//void wav2mp3();
+	void flac2mp3();
+	void wav2mp3();
 
 	// wave file header
 	struct sWAVEheader
@@ -159,7 +160,7 @@ private slots:
 	void startEncoding();
 
 private:
-	bool Encoder(const QString& droppedfile);
+	bool SelectEncoder(const QString& droppedfile);
 
 	QApplication* gui_window;
 	QStringList pathList;
@@ -170,7 +171,7 @@ private:
 };
 
 //---------------------------------------------------------------------------------
-// libFLAC classes
+// libFLAC encoder / decoder classes
 //---------------------------------------------------------------------------------
 class libflac_StreamEncoder : public FLAC::Encoder::Stream
 {

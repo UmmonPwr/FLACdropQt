@@ -52,14 +52,14 @@ void cScheduler::startEncoding()
 	}
 
 	// we first start the max allowed number of threads and after that wait for the thread finished signals to start a new thread
-	// if the number of the dropped files are less than the number of available threads then we start threads only for the dropped files
+	// if the number of the dropped files are less than the number of available threads then we run the loop only for the number of dropped files
 	ActualSettings.OUT_Threads > pathList.size() ? allowedthreads = pathList.size() : allowedthreads = ActualSettings.OUT_Threads;
 	pathlistPosition = 0;
 	parallelthreads = 0;
 
 	while ((parallelthreads < allowedthreads) && (pathlistPosition < pathList.size()))
 	{
-		threadStarted = Encoder(pathList.at(pathlistPosition));
+		threadStarted = SelectEncoder(pathList.at(pathlistPosition));
 		pathlistPosition++;
 		if (threadStarted == true) parallelthreads++;
 	}
@@ -78,7 +78,7 @@ void cScheduler::startNewThread()
 
 	while ((threadStarted == false) && (pathlistPosition < pathList.size()))
 	{
-		threadStarted = Encoder(pathList.at(pathlistPosition));
+		threadStarted = SelectEncoder(pathList.at(pathlistPosition));
 		pathlistPosition++;
 	}
 	
@@ -87,7 +87,7 @@ void cScheduler::startNewThread()
 
 // TODO: check only the actual extension of the file, do not search the entire path string
 // choose which encoder to run based on the path string
-bool cScheduler::Encoder(const QString& droppedfile)
+bool cScheduler::SelectEncoder(const QString& droppedfile)
 {
 	bool threadStarted = false;
 
@@ -125,6 +125,26 @@ bool cScheduler::Encoder(const QString& droppedfile)
 //---------------------------------------------------------------------------------
 // Encoders class definitions
 //---------------------------------------------------------------------------------
+void encoders::run()
+{
+	// choose which encoder should be used
+	switch (settings.OUT_Type)
+	{
+		case FILE_TYPE_FLAC:
+			if (inputFileType == FILE_TYPE_WAV) wav2flac();
+			break;
+		
+		case FILE_TYPE_WAV:
+			if (inputFileType == FILE_TYPE_FLAC) flac2wav();
+			break;
+		
+		case FILE_TYPE_MP3:
+			if (inputFileType == FILE_TYPE_FLAC) flac2mp3();
+			if (inputFileType == FILE_TYPE_WAV) wav2mp3();
+			break;
+	}
+}
+
 void encoders::addEncoderSettings(sFLACdropQtSettings encparams)
 {
 	settings = encparams;
@@ -145,28 +165,8 @@ void encoders::setInputFileType(int in)
 	inputFileType = in;
 }
 
-void encoders::run()
-{
-	// choose which encoder should be used
-	switch (settings.OUT_Type)
-	{
-		case FILE_TYPE_FLAC:
-			if (inputFileType == FILE_TYPE_WAV) wav2flac();
-			break;
-		
-		case FILE_TYPE_WAV:
-			if (inputFileType == FILE_TYPE_FLAC) flac2wav();
-			break;
-		
-		case FILE_TYPE_MP3:
-			//if (inputFileType == FILE_TYPE_FLAC) flac2mp3();
-			//if (inputFileType == FILE_TYPE_WAV) wav2mp3();
-			break;
-	}
-}
-
 //---------------------------------------------------------------------------------
-// Encoder algorithms: WAV -> FLAC
+// Encoder algorithm: WAV -> FLAC
 //---------------------------------------------------------------------------------
 void encoders::wav2flac()
 {
@@ -356,7 +356,6 @@ void encoders::wav2flac()
 		}
 		else
 		{
-			//dynamic_cast<libflac_StreamEncoder*>(encoder)->file_ = fout;
 			encoder->file_ = fout;
 			if (encoder->init() != FLAC__STREAM_ENCODER_INIT_STATUS_OK)
 			{
@@ -371,7 +370,7 @@ void encoders::wav2flac()
 		delete[]wchar_infile;
 	}
 
-	// read blocks of samples from WAVE file and feed to the encoder
+	// libFLAC: read blocks of samples from WAVE file and feed to the encoder
 	if (err == ALL_OK)
 	{
 		size_t left, need, i;
@@ -448,7 +447,7 @@ void encoders::wav2flac()
 }
 
 //---------------------------------------------------------------------------------
-// Encoder algorithms: FLAC -> WAV
+// Encoder algorithm: FLAC -> WAV
 //---------------------------------------------------------------------------------
 void encoders::flac2wav()
 {
@@ -572,7 +571,8 @@ void encoders::flac2wav()
 		FLAC__StreamDecoderState state;
 		int ProgressBarPos = 0;
 
-		emit setProgressbarLimits(ID, 0, decoder->get_total_samples() / decoder->get_blocksize_clientdata());	// set up the progress bar boundaries, block size is around 4k depending on resolution
+		// set up the progress bar boundaries, block size is around 4k depending on resolution
+		emit setProgressbarLimits(ID, 0, decoder->get_total_samples() / decoder->get_blocksize_clientdata());
 		emit setProgressbarValue(ID, 0);
 
 		// loop the decoder until it reaches the end of the input file or returns an error
@@ -593,5 +593,320 @@ void encoders::flac2wav()
 		delete decoder;
 	}
 
+	emit ThreadFinished(ID);
+}
+
+//---------------------------------------------------------------------------------
+// Encoder algorithm: WAV -> MP3
+//---------------------------------------------------------------------------------
+void encoders::wav2mp3()
+{
+	lame_global_flags* lame_gfp;
+	FILE* fin, * fout;
+	int err = 0;
+
+	unsigned int total_samples = 0;	// can use a 32-bit number due to WAV file size limitation
+	sWAVEheader WAVEheader;
+	sFMTheader FMTheader;
+	sDATAheader DATAheader;
+
+	// WAV: open the input WAVE file
+	{
+		WCHAR* wchar_infile;
+
+		wchar_infile = new WCHAR[MAXFILENAMELENGTH];
+		infile.toWCharArray(wchar_infile);
+		wchar_infile[infile.length()] = 0;	// must add the closing 0 to have correctly prepared wchar array
+		if ((_wfopen_s(&fin, wchar_infile, L"rb")) != NULL)
+		{
+			err = FAIL_FILE_OPEN;
+		}
+		delete[]wchar_infile;
+	}
+
+	// WAV: read header and check if it is valid
+	if (err == ALL_OK)
+	{
+		if (fread(&WAVEheader, 1, 12, fin) != 12)
+		{
+			fclose(fin);
+			err = FAIL_FILE_OPEN;
+		}
+	}
+	if (err == ALL_OK)
+	{
+		if (memcmp(WAVEheader.ChunkID, "RIFF", 4) || memcmp(WAVEheader.Format, "WAVE", 4))
+		{
+			fclose(fin);
+			err = FAIL_WAV_BAD_HEADER;
+		}
+	}
+
+	// WAV: read the format chunk's header only to get its chunk size
+	if (err == ALL_OK)
+	{
+		if (fread(&DATAheader, 1, 8, fin) != 8)
+		{
+			fclose(fin);
+			err = FAIL_WAV_BAD_HEADER;
+		}
+	}
+
+	// WAV: read the complete wave file header according to its actual chunk size (16, 18 or 40 byte), ChunkSize does not include the size of the header
+	if (err == ALL_OK)
+	{
+		fseek(fin, -8, SEEK_CUR);
+		if ((fread(&FMTheader, 1, (size_t)DATAheader.ChunkSize + 8, fin) != (size_t)DATAheader.ChunkSize + 8))
+		{
+			fclose(fin);
+			err = FAIL_WAV_BAD_HEADER;
+		}
+	}
+
+	// WAV: check if the wav file has PCM uncompressed data
+	if (err == ALL_OK)
+	{
+		switch (FMTheader.AudioFormat)
+		{
+		case WAV_FORMAT_PCM:
+			break;
+		case WAV_FORMAT_EXTENSIBLE:
+			// in this case the first two byte of the SubFormat is defining the audio format
+			if (FMTheader.SubFormat_AudioFormat != WAV_FORMAT_PCM)
+			{
+				fclose(fin);
+				err = FAIL_WAV_UNSUPPORTED;
+			}
+			break;
+		default:
+			fclose(fin);
+			err = FAIL_WAV_UNSUPPORTED;
+		}
+	}
+
+	// WAV: check if the file has 16 or 24 bit resolution
+	if (err == ALL_OK)
+	{
+		switch (FMTheader.BitsPerSample)
+		{
+		case 16:
+		case 24:
+			break;
+		default:
+			fclose(fin);
+			err = FAIL_LIBFLAC_ONLY_16_24_BIT;
+		}
+	}
+
+	// WAV: search for the data chunk
+	if (err == ALL_OK)
+	{
+		do
+		{
+			fread(&DATAheader, 1, 8, fin);
+			fseek(fin, DATAheader.ChunkSize, SEEK_CUR);
+		} while (memcmp(DATAheader.ChunkID, "data", 4));
+		fseek(fin, -DATAheader.ChunkSize, SEEK_CUR);													// go back to the beginning of the data chunk
+		total_samples = DATAheader.ChunkSize / FMTheader.NumChannels / (FMTheader.BitsPerSample / 8);	// sound data's size divided by one sample's size
+	}
+
+	// libmp3lame: initialize lame encoder
+	if (err == ALL_OK)
+	{
+		lame_gfp = lame_init();
+		if (lame_gfp == NULL)
+		{
+			fclose(fin);
+			err = FAIL_LAME_INIT;
+		}
+	}
+
+	// libmp3lame: set encoder parameters
+	if (err == ALL_OK)
+	{
+		switch (FMTheader.NumChannels)
+		{
+			case 1:
+				lame_set_mode(lame_gfp, MONO);
+				break;
+			case 2:
+				lame_set_mode(lame_gfp, JOINT_STEREO);
+				break;
+		}
+
+		// Internal algorithm selection. True quality is determined by the bitrate but this variable will effect quality by selecting expensive or cheap algorithms.
+		// quality=0..9.  0=best (very slow).  9=worst.
+		// recommended:  2     near-best quality, not too slow
+		// 5     good quality, fast
+		// 7     ok quality, really fast
+		lame_set_quality(lame_gfp, settings.LAME_InternalQuality);
+
+		// turn off automatic writing of ID3 tag data into mp3 stream we have to call it before 'lame_init_params', because that function would spit out ID3v2 tag data.
+		lame_set_write_id3tag_automatic(lame_gfp, 0);
+
+		// set lame encoder parameters for CBR encoding
+		lame_set_num_channels(lame_gfp, FMTheader.NumChannels);
+		lame_set_in_samplerate(lame_gfp, FMTheader.SampleRate);
+		lame_set_brate(lame_gfp, LAME_CBRBITRATES[settings.LAME_CBRBitrate]);	// load encoding bitrate setting from LUT
+
+		// set lame encoder parameters for VBR encoding
+		switch (settings.LAME_EncodingMode)
+		{
+			case 0:	// CBR
+				lame_set_VBR(lame_gfp, vbr_off);
+				break;
+			case 1:	// VBR
+				lame_set_VBR(lame_gfp, vbr_mtrh);
+				break;
+		}
+
+		lame_set_VBR_q(lame_gfp, settings.LAME_VBRQuality); // VBR quality level.  0=highest  9=lowest
+
+		// now that all the options are set, lame needs to analyze them and set some more internal options and check for problems
+		if (lame_init_params(lame_gfp) != 0)
+		{
+			fclose(fin);
+			err = FAIL_LAME_INIT;
+		}
+	}
+
+	// libmp3lame: open output file
+	if (err == ALL_OK)
+	{
+		WCHAR* wchar_infile, * wchar_outfile;
+
+		wchar_infile = new WCHAR[MAXFILENAMELENGTH];
+		infile.toWCharArray(wchar_infile);
+		wchar_infile[infile.length()] = 0;	// must add the closing 0 to have correctly prepared wchar array
+
+		wchar_outfile = new WCHAR[MAXFILENAMELENGTH];
+		wcsncpy_s(wchar_outfile, MAXFILENAMELENGTH, wchar_infile, wcsnlen(wchar_infile, MAXFILENAMELENGTH) - 3);	// leave out the "wav" from the end
+		wcscat_s(wchar_outfile, MAXFILENAMELENGTH, L"mp3");
+
+		if ((_wfopen_s(&fout, wchar_outfile, L"w+b")) != NULL)
+		{
+			fclose(fin);
+			err = FAIL_FILE_OPEN;
+		}
+
+		delete[]wchar_outfile;
+		delete[]wchar_infile;
+	}
+
+	// libmp3lame: start encoding
+	if (err == ALL_OK)
+	{
+		bool ok = true;
+		int ProgressBarPos = 0;
+		BYTE* buffer_mp3, * buffer_wav;
+		int imp3, owrite;
+		size_t left, need;
+
+		// set up the progress bar boundaries
+		emit setProgressbarLimits(ID, 0, total_samples / READSIZE_MP3);
+		emit setProgressbarValue(ID, 0);
+
+		// allocate memory buffers
+		buffer_wav = new BYTE[READSIZE_MP3 * FMTheader.NumChannels * (FMTheader.BitsPerSample / 8)];
+		buffer_mp3 = new BYTE[LAME_MAXMP3BUFFER];
+
+		/*size_t  id3v2_size;
+		unsigned char *id3v2tag;
+
+		id3v2_size = lame_get_id3v2_tag(lame_gfp, 0, 0);
+		if (id3v2_size > 0)
+		{
+			id3v2tag = new unsigned char[id3v2_size];
+			if (id3v2tag != 0)
+			{
+				imp3 = lame_get_id3v2_tag(lame_gfp, id3v2tag, id3v2_size);
+				owrite = (int) fwrite(id3v2tag, 1, imp3, fout);
+				delete []id3v2tag;
+				if (owrite != imp3) return FAIL_LAME_ID3TAG;
+			}
+		}
+		else
+		{
+			unsigned char* id3v2tag = getOldTag(gf);
+			id3v2_size = sizeOfOldTag(gf);
+			if ( id3v2_size > 0 )
+			{
+				size_t owrite = fwrite(id3v2tag, 1, id3v2_size, fout);
+				if (owrite != id3v2_size) return FAIL_LAME_ID3TAG;
+			}
+		}
+		if (settings.LAME_Flush == true) fflush(fout);*/
+
+		// read blocks of samples from WAVE file and feed to the encoder
+		left = (size_t)total_samples;
+		while (ok && left)
+		{
+			need = (left > READSIZE_MP3 ? (size_t)READSIZE_MP3 : (size_t)left);	// calculate the number of samples to read
+			if (fread(buffer_wav, (size_t)FMTheader.NumChannels * (FMTheader.BitsPerSample / 8), need, fin) != need)
+			{
+				// error during reading from WAVE file
+				ok = false;
+			}
+			else
+			{
+				// feed samples to the encoder
+				switch (FMTheader.NumChannels)
+				{
+				case 2:
+					imp3 = lame_encode_buffer_interleaved(lame_gfp, (short int*)buffer_wav, need, buffer_mp3, LAME_MAXMP3BUFFER);
+					break;
+				case 1:	// the interleaved version corrupts the mono stream
+					imp3 = lame_encode_buffer(lame_gfp, (short int*)buffer_wav, NULL, need, buffer_mp3, LAME_MAXMP3BUFFER);
+					break;
+				}
+
+				// was our output buffer big enough?
+				if (imp3 < 0) ok = false;
+				else
+				{
+					owrite = (int)fwrite(buffer_mp3, 1, imp3, fout);
+					if (owrite != imp3) ok = false;
+					if (settings.LAME_Flush == true) fflush(fout);
+				}
+
+				emit setProgressbarValue(ID, ProgressBarPos++);	// increase the progress bar
+			}
+			left -= need;
+		}
+
+		// may return one more mp3 frame
+		if (ok == true)
+		{
+			if (settings.LAME_NoGap == true) imp3 = lame_encode_flush_nogap(lame_gfp, buffer_mp3, LAME_MAXMP3BUFFER);
+			else imp3 = lame_encode_flush(lame_gfp, buffer_mp3, LAME_MAXMP3BUFFER);
+			if (imp3 < 0) ok = false;
+		}
+
+		if (ok == true)
+		{
+			owrite = (int)fwrite(buffer_mp3, 1, imp3, fout);
+			if (owrite != imp3) ok = false;
+		}
+
+		if (settings.LAME_Flush == true && ok == true) fflush(fout);
+
+		delete[]buffer_wav;
+		delete[]buffer_mp3;
+	}
+
+	if (err == ALL_OK)
+	{
+		fclose(fin);
+		fclose(fout);
+	}
+
+	emit ThreadFinished(ID);
+}
+
+//---------------------------------------------------------------------------------
+// Encoder algorithm: FLAC -> MP3
+//---------------------------------------------------------------------------------
+void encoders::flac2mp3()
+{
 	emit ThreadFinished(ID);
 }

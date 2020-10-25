@@ -29,6 +29,9 @@
     <Filter Include="Header Files\libFLAC">
       <UniqueIdentifier>{e74427b0-7cd8-4ce4-bd7f-268b798db266}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\libmp3lame">
+      <UniqueIdentifier>{7fd09093-d264-4f03-b2c5-3a21d6e5dbf6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -119,6 +122,9 @@
     </ClInclude>
     <ClInclude Include="..\libFLAC\include\FLAC\stream_encoder.h">
       <Filter>Header Files\libFLAC</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libmp3lame\include\lame.h">
+      <Filter>Header Files\libmp3lame</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -13,6 +13,8 @@ void FLACdropQt::readSettings()
 	FLACdropQtSettings.LAME_VBRQuality = LAME_VBRQUALITY;
 	FLACdropQtSettings.LAME_EncodingMode = LAME_ENCODINGMODE;
 	FLACdropQtSettings.LAME_CBRBitrate = LAME_CBRBITRATE;
+	FLACdropQtSettings.LAME_Flush = LAME_FLUSH;
+	FLACdropQtSettings.LAME_NoGap = LAME_NOGAP;
 
 	// setup the widget status'
 	// main window
