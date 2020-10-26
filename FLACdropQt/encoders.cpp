@@ -66,8 +66,7 @@ void cScheduler::startEncoding()
 
 	while ((parallelthreads < allowedthreads) && (pathlistPosition < pathList.size()))
 	{
-		threadStarted = SelectEncoder(pathList.at(pathlistPosition));
-		pathlistPosition++;
+		threadStarted = SelectEncoder(pathList.at(pathlistPosition++));
 		if (threadStarted == true) parallelthreads++;
 		else emit setProgressbarTotalValue(++countfinishedthreads);	// no thread was started but we progressed in the pathlist
 	}
@@ -86,8 +85,8 @@ void cScheduler::startNewThread()
 
 	while ((threadStarted == false) && (pathlistPosition < pathList.size()))
 	{
-		threadStarted = SelectEncoder(pathList.at(pathlistPosition));
-		pathlistPosition++;
+		threadStarted = SelectEncoder(pathList.at(pathlistPosition++));
+		if (threadStarted == false) emit setProgressbarTotalValue(++countfinishedthreads);	// no thread was started but we progressed in the pathlist
 	}
 	
 	if (pathlistPosition == pathList.size()) emit setDrop(true);	// we were not able to start a new thread so we can enable drag&drop
