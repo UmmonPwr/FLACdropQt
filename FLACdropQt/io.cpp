@@ -18,7 +18,7 @@ void FLACdropQt::readSettings()
 
 	// setup the widget status'
 	// main window
-	layout_radiobutton_outputtypes[FLACdropQtSettings.OUT_Type]->setChecked(true);
+	main_radiobutton_outputtypes[FLACdropQtSettings.OUT_Type]->setChecked(true);
 
 	// options - output
 	options_output_slider_threads->setValue(FLACdropQtSettings.OUT_Threads);
@@ -57,7 +57,7 @@ void FLACdropQt::writeSettings()
 	// update the global settings with the actual widget values
 	// main window
 	for (int i = 0; i < FILE_TYPE_QUANTITY; i++)
-		if (layout_radiobutton_outputtypes[i]->isChecked() == true) FLACdropQtSettings.OUT_Type = i;
+		if (main_radiobutton_outputtypes[i]->isChecked() == true) FLACdropQtSettings.OUT_Type = i;
 
 	// options - output
 	FLACdropQtSettings.OUT_Threads = options_output_slider_threads->value();

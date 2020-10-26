@@ -69,6 +69,8 @@ private slots:
 
 	void setProgressbarLimits(int slot, int min, int max);
 	void setProgressbarValue(int slot, int value);
+	void setProgressbarTotalLimits(int min, int max);
+	void setProgressbarTotalValue(int value);
 	void setDrop(bool state);
 
 protected:
@@ -104,24 +106,24 @@ private:
 	QWidget* mainWindow;
 	QVBoxLayout* main_layout;
 	
-	QGridLayout* layout_progressbars;
-	QHBoxLayout* layout_radiobuttons;
+	QGridLayout* main_layout_progressbars;
+	QHBoxLayout* main_layout_radiobuttons;
 
-	QWidget* layout_filler_top;
-	QWidget* layout_filler_bottom;
-	QWidget* layout_filler_radiobutton;
+	QWidget* main_filler_top;
+	QWidget* main_filler_bottom;
+	QWidget* main_filler_radiobutton;
 
-	QLabel* layout_label_info;
-	QLabel* layout_label_status;
+	QLabel* main_label_info;
+	QLabel* main_label_status;
 
-	QImage* layout_image_FLACdropLogo;
-	QLabel* layout_label_FLACdropLogo;
+	QImage* main_image_FLACdropLogo;
+	QLabel* main_label_FLACdropLogo;
 	QIcon* icon_FLACdrop;
 	QPixmap* pixmap_FLACdropQt;
 
-	QProgressBar* layout_progressbar_total;
-	QProgressBar* layout_progressbar_threads[OUT_MAX_THREADS];
-	QRadioButton* layout_radiobutton_outputtypes[FILE_TYPE_QUANTITY];
+	QProgressBar* main_progressbar_total;
+	QProgressBar* main_progressbar_threads[OUT_MAX_THREADS];
+	QRadioButton* main_radiobutton_outputtypes[FILE_TYPE_QUANTITY];
 
 	// widgets on options window
 	QWidget* optionsWindow;

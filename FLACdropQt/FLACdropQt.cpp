@@ -15,56 +15,60 @@ FLACdropQt::FLACdropQt(QWidget *parent)	: QMainWindow(parent)
 	mainWindow->setLayout(main_layout);
 
 	// start to populate the main window
-	// add widgets to the progress bar area
-	layout_progressbars = new QGridLayout;
-	for (int i = 0; i < OUT_MAX_THREADS; i++)
-		layout_progressbar_threads[i] = new QProgressBar;
+	// add total progress bar
+	main_progressbar_total = new QProgressBar;
+	main_layout->addWidget(main_progressbar_total);
 
-	main_layout->addLayout(layout_progressbars);	// grid layout have to be added first and then populated
+	// add widgets to the thread progress bar area
+	main_layout_progressbars = new QGridLayout;
+	for (int i = 0; i < OUT_MAX_THREADS; i++)
+		main_progressbar_threads[i] = new QProgressBar;
+
+	main_layout->addLayout(main_layout_progressbars);	// grid layout have to be added first and then populated
 	
 	// add the progress bars in two columns
-	for (int i = 0; i < OUT_MAX_THREADS; i++) layout_progressbars->addWidget(layout_progressbar_threads[i], i/2, i%2);
+	for (int i = 0; i < OUT_MAX_THREADS; i++) main_layout_progressbars->addWidget(main_progressbar_threads[i], i/2, i%2);
 
 	// add widgets to middle info area
-	layout_filler_top = new QWidget;
-	layout_filler_top->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	main_filler_top = new QWidget;
+	main_filler_top->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-	layout_label_info = new QLabel(tr("<i>Waiting for dropped audio files</i>"));
-	layout_label_info->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
-	layout_label_info->setAlignment(Qt::AlignCenter);
+	main_label_info = new QLabel(tr("<i>Waiting for dropped audio files</i>"));
+	main_label_info->setFrameStyle(QFrame::StyledPanel | QFrame::Sunken);
+	main_label_info->setAlignment(Qt::AlignCenter);
 
-	layout_filler_bottom = new QWidget;
-	layout_filler_bottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	main_filler_bottom = new QWidget;
+	main_filler_bottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	
-	main_layout->addWidget(layout_filler_top);
-	main_layout->addWidget(layout_label_info);
-	main_layout->addWidget(layout_filler_bottom);
+	main_layout->addWidget(main_filler_top);
+	main_layout->addWidget(main_label_info);
+	main_layout->addWidget(main_filler_bottom);
 
 	// add widgets to output format selection area
-	layout_filler_radiobutton = new QWidget;
-	layout_filler_radiobutton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	main_filler_radiobutton = new QWidget;
+	main_filler_radiobutton->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-	layout_radiobuttons = new QHBoxLayout;
+	main_layout_radiobuttons = new QHBoxLayout;
 	for (int i = 0; i < FILE_TYPE_QUANTITY; i++)
 	{
-		layout_radiobutton_outputtypes[i] = new QRadioButton(OUT_TYPE_NAMES[i], this);
-		layout_radiobuttons->addWidget(layout_radiobutton_outputtypes[i]);
-		(void)connect(layout_radiobutton_outputtypes[i], SIGNAL(toggled(bool)), this, SLOT(set_OUT_type()));
+		main_radiobutton_outputtypes[i] = new QRadioButton(OUT_TYPE_NAMES[i], this);
+		main_layout_radiobuttons->addWidget(main_radiobutton_outputtypes[i]);
+		(void)connect(main_radiobutton_outputtypes[i], SIGNAL(toggled(bool)), this, SLOT(set_OUT_type()));
 	}
-	layout_radiobuttons->addWidget(layout_filler_radiobutton);
+	main_layout_radiobuttons->addWidget(main_filler_radiobutton);
 
-	main_layout->addLayout(layout_radiobuttons);
+	main_layout->addLayout(main_layout_radiobuttons);
 
 	// add widgets to bottom area
-	layout_image_FLACdropLogo = new QImage;
-	layout_image_FLACdropLogo->loadFromData((uchar*)resource_image_banner.GetResourcePointer(), resource_image_banner.GetResourceSize(), NULL);
-	layout_label_FLACdropLogo = new QLabel;
-	layout_label_FLACdropLogo->setPixmap(QPixmap::fromImage(*layout_image_FLACdropLogo));
+	main_image_FLACdropLogo = new QImage;
+	main_image_FLACdropLogo->loadFromData((uchar*)resource_image_banner.GetResourcePointer(), resource_image_banner.GetResourceSize(), NULL);
+	main_label_FLACdropLogo = new QLabel;
+	main_label_FLACdropLogo->setPixmap(QPixmap::fromImage(*main_image_FLACdropLogo));
 
-	layout_label_status = new QLabel(tr("Status: OK"));
+	main_label_status = new QLabel(tr("Status: OK"));
 
-	main_layout->addWidget(layout_label_FLACdropLogo);
-	main_layout->addWidget(layout_label_status);
+	main_layout->addWidget(main_label_FLACdropLogo);
+	main_layout->addWidget(main_label_status);
 
 	// setup the application appearance
 	icon_FLACdrop = new QIcon;
@@ -81,7 +85,9 @@ FLACdropQt::FLACdropQt(QWidget *parent)	: QMainWindow(parent)
 	createMenus();
 	createOptionsWindow();
 
-	for (int i = 0; i < OUT_MAX_THREADS; i++) layout_progressbar_threads[i]->setValue(0); // switch on percentage display at each progressbar
+	// switch on percentage display at each progressbar
+	for (int i = 0; i < OUT_MAX_THREADS; i++) main_progressbar_threads[i]->setValue(0);
+	main_progressbar_total->setValue(0);
 	
 	// load settings and allocate encoder scheduler
 	readSettings();
@@ -136,22 +142,31 @@ void FLACdropQt::createMenus()
 //---------------------------------------------------------------------------------
 // Slots
 //---------------------------------------------------------------------------------
-
-// set the output type variable according which radio button was selected
 void FLACdropQt::set_OUT_type()
 {
+	// set the output type variable according which radio button was selected
 	for (int i = 0; i < FILE_TYPE_QUANTITY; i++)
-		if (layout_radiobutton_outputtypes[i]->isChecked() == true) FLACdropQtSettings.OUT_Type = i;
+		if (main_radiobutton_outputtypes[i]->isChecked() == true) FLACdropQtSettings.OUT_Type = i;
 }
 
 void FLACdropQt::setProgressbarLimits(int slot, int min, int max)
 {
-	layout_progressbar_threads[slot]->setRange(min, max);
+	main_progressbar_threads[slot]->setRange(min, max);
 }
 
 void FLACdropQt::setProgressbarValue(int slot, int value)
 {
-	layout_progressbar_threads[slot]->setValue(value);
+	main_progressbar_threads[slot]->setValue(value);
+}
+
+void FLACdropQt::setProgressbarTotalLimits(int min, int max)
+{
+	main_progressbar_total->setRange(min, max);
+}
+
+void FLACdropQt::setProgressbarTotalValue(int value)
+{
+	main_progressbar_total->setValue(value);
 }
 
 void FLACdropQt::setDrop(bool state)

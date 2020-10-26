@@ -155,7 +155,7 @@ void FLACdropQt::createOptionsWindow()
 
 void FLACdropQt::dialog_options()
 {
-	layout_label_info->setText(tr("Invoked <b>File|Options Dialog</b>"));
+	main_label_info->setText(tr("Invoked <b>File|Options Dialog</b>"));
 
 	// setup the widget values according to the actual settings before showing the window
 	options_output_slider_threads->setValue(FLACdropQtSettings.OUT_Threads);

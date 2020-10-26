@@ -8,6 +8,8 @@ cScheduler::cScheduler(QApplication* gui_thread)
 	gui_window = gui_thread;
 
 	connect(this, SIGNAL(setDrop(bool)), gui_window, SLOT(setDrop(bool)));
+	connect(this, SIGNAL(setProgressbarTotalLimits(int, int)), gui_window, SLOT(setProgressbarTotalLimits(int, int)));
+	connect(this, SIGNAL(setProgressbarTotalValue(int)), gui_window, SLOT(setProgressbarTotalValue(int)));
 
 	// allocate each encoder object and connect signals to slots
 	for (int i = 0; i < OUT_MAX_THREADS; i++)
@@ -35,12 +37,13 @@ void cScheduler::addEncoderSettings(sFLACdropQtSettings encSettings)
 void cScheduler::ThreadFinished(int ID)
 {
 	thread_status[ID] = false;
+	emit setProgressbarTotalValue(++countfinishedthreads);
 }
 
 // run when drag&drop is initiated
 void cScheduler::startEncoding()
 {
-	int parallelthreads, allowedthreads;
+	int parallelthreads = 0, allowedthreads;
 	bool threadStarted;
 
 	// setup each encoder and reset the progressbars
@@ -50,18 +53,23 @@ void cScheduler::startEncoding()
 		emit setProgressbarValue(i, 0);
 		thread_status[i] = false;
 	}
+	emit setProgressbarTotalLimits(0, pathList.size());
+	emit setProgressbarTotalValue(0);
 
 	// we first start the max allowed number of threads and after that wait for the thread finished signals to start a new thread
 	// if the number of the dropped files are less than the number of available threads then we run the loop only for the number of dropped files
 	ActualSettings.OUT_Threads > pathList.size() ? allowedthreads = pathList.size() : allowedthreads = ActualSettings.OUT_Threads;
+
+	// reset counters
 	pathlistPosition = 0;
-	parallelthreads = 0;
+	countfinishedthreads = 0;
 
 	while ((parallelthreads < allowedthreads) && (pathlistPosition < pathList.size()))
 	{
 		threadStarted = SelectEncoder(pathList.at(pathlistPosition));
 		pathlistPosition++;
 		if (threadStarted == true) parallelthreads++;
+		else emit setProgressbarTotalValue(++countfinishedthreads);	// no thread was started but we progressed in the pathlist
 	}
 
 	// check if at least a thread is running, if not then enable drag&drop

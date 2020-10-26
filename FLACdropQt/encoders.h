@@ -153,6 +153,8 @@ public:
 
 signals:
 	void setProgressbarValue(int ID, int value);
+	void setProgressbarTotalLimits(int min, int max);
+	void setProgressbarTotalValue(int value);
 	void setDrop(bool state);
 
 private slots:
@@ -169,6 +171,7 @@ private:
 	encoders* encoder_list[OUT_MAX_THREADS];
 	bool thread_status[OUT_MAX_THREADS];
 	int pathlistPosition;
+	int countfinishedthreads;
 };
 
 //---------------------------------------------------------------------------------
