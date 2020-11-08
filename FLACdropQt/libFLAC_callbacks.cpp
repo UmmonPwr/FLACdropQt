@@ -59,6 +59,13 @@ void libflac_StreamEncoder::metadata_callback(const ::FLAC__StreamMetadata* meta
 void libflac_StreamDecoder::addOutputFile(FILE* f)
 {
 	client_data.fout = f;
+	client_data.rendertarget = RENDERTARGET_FILE;
+}
+
+void libflac_StreamDecoder::addOutputMem(BYTE* buffer)
+{
+	client_data.buffer_out = buffer;
+	client_data.rendertarget = RENDERTARGET_MEM;
 }
 
 unsigned int libflac_StreamDecoder::get_bits_per_sample_clientdata()
@@ -69,6 +76,16 @@ unsigned int libflac_StreamDecoder::get_bits_per_sample_clientdata()
 unsigned int libflac_StreamDecoder::get_blocksize_clientdata()
 {
 	return client_data.blocksize;
+}
+
+unsigned int libflac_StreamDecoder::get_channels_clientdata()
+{
+	return client_data.channels;
+}
+
+unsigned int libflac_StreamDecoder::get_sample_rate_clientdata()
+{
+	return client_data.sample_rate;
 }
 
 ::FLAC__StreamDecoderReadStatus libflac_StreamDecoder::read_callback(FLAC__byte buffer[], size_t* bytes)
@@ -133,7 +150,7 @@ bool libflac_StreamDecoder::eof_callback()
 ::FLAC__StreamDecoderWriteStatus libflac_StreamDecoder::write_callback(const ::FLAC__Frame* frame, const FLAC__int32* const buffer[])
 {
 	UNREFERENCED_PARAMETER(frame);
-	FILE* f = client_data.fout;
+	//FILE* f = client_data.fout;
 
 	const FLAC__uint32 total_size = (FLAC__uint32)(client_data.total_samples * client_data.channels * (client_data.bps / 8));
 	size_t i;
@@ -141,86 +158,125 @@ bool libflac_StreamDecoder::eof_callback()
 	FLAC__int32 temp;
 	FLAC__byte* pcm;
 
-	// write WAVE header before writing the first frame
-	if (frame->header.number.sample_number == 0)
+	switch (client_data.rendertarget)
 	{
-		sWAVEheader WAVEheader;
-		sFMTheader FMTheader;
-		sDATAheader DATAheader;
-
-		// fill up the WAVE file headers
-		WAVEheader.ChunkID[0] = 'R';
-		WAVEheader.ChunkID[1] = 'I';
-		WAVEheader.ChunkID[2] = 'F';
-		WAVEheader.ChunkID[3] = 'F';
-		WAVEheader.ChunkSize = 36 + total_size;	// This is the size of the entire file in bytes minus 8 bytes for the two fields not included in this count: ChunkID and ChunkSize.
-		WAVEheader.Format[0] = 'W';
-		WAVEheader.Format[1] = 'A';
-		WAVEheader.Format[2] = 'V';
-		WAVEheader.Format[3] = 'E';
-		FMTheader.ChunkID[0] = 'f';
-		FMTheader.ChunkID[1] = 'm';
-		FMTheader.ChunkID[2] = 't';
-		FMTheader.ChunkID[3] = ' ';
-		FMTheader.ChunkSize = 16;	// size of the format subchunk
-		FMTheader.AudioFormat = WAV_FORMAT_PCM;
-		FMTheader.NumChannels = client_data.channels;
-		FMTheader.SampleRate = client_data.sample_rate;
-		FMTheader.ByteRate = client_data.sample_rate * client_data.channels * (client_data.bps / 8);	// SampleRate * NumChannels * BitsPerSample/8
-		FMTheader.BlockAlign = client_data.channels * (client_data.bps / 8);	// NumChannels * BitsPerSample/8
-		FMTheader.BitsPerSample = client_data.bps;
-		DATAheader.ChunkID[0] = 'd';
-		DATAheader.ChunkID[1] = 'a';
-		DATAheader.ChunkID[2] = 't';
-		DATAheader.ChunkID[3] = 'a';
-		DATAheader.ChunkSize = total_size;
-
-		i = fwrite(&WAVEheader, 1, 12, f);
-		if (i != 12) return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;	// write error
-		i = fwrite(&FMTheader, 1, 24, f);
-		if (i != 24) return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
-		i = fwrite(&DATAheader, 1, 8, f);
-		if (i != 8) return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
-	}
-
-	// write decoded PCM samples
-	switch (client_data.bps)
-	{
-	case 16:	pcm = new FLAC__byte[frame->header.blocksize * client_data.channels * 2];
-		for (chan = 0; chan < client_data.channels; chan++)
+	case RENDERTARGET_FILE:
+		if (frame->header.number.sample_number == 0)	// write WAVE header before writing the first frame
 		{
-			for (pos = 0; pos < frame->header.blocksize; pos++)
-			{
-				temp = buffer[chan][pos];
-				pcm[client_data.channels * pos * 2 + chan * 2] = (FLAC__byte)temp;
-				temp = temp >> 8;
-				pcm[client_data.channels * pos * 2 + chan * 2 + 1] = (FLAC__byte)temp;
-			}
-		}
-		i = fwrite(pcm, client_data.channels * 2, frame->header.blocksize, f);
-		delete[]pcm;
-		if (i != frame->header.blocksize) return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
-		break;
+			sWAVEheader WAVEheader;
+			sFMTheader FMTheader;
+			sDATAheader DATAheader;
 
-	case 24:	pcm = new FLAC__byte[frame->header.blocksize * client_data.channels * 3];
-		for (chan = 0; chan < get_channels(); chan++)
+			// fill up the WAVE file headers
+			WAVEheader.ChunkID[0] = 'R';
+			WAVEheader.ChunkID[1] = 'I';
+			WAVEheader.ChunkID[2] = 'F';
+			WAVEheader.ChunkID[3] = 'F';
+			WAVEheader.ChunkSize = 36 + total_size;	// This is the size of the entire file in bytes minus 8 bytes for the two fields not included in this count: ChunkID and ChunkSize.
+			WAVEheader.Format[0] = 'W';
+			WAVEheader.Format[1] = 'A';
+			WAVEheader.Format[2] = 'V';
+			WAVEheader.Format[3] = 'E';
+			FMTheader.ChunkID[0] = 'f';
+			FMTheader.ChunkID[1] = 'm';
+			FMTheader.ChunkID[2] = 't';
+			FMTheader.ChunkID[3] = ' ';
+			FMTheader.ChunkSize = 16;	// size of the format subchunk
+			FMTheader.AudioFormat = WAV_FORMAT_PCM;
+			FMTheader.NumChannels = client_data.channels;
+			FMTheader.SampleRate = client_data.sample_rate;
+			FMTheader.ByteRate = client_data.sample_rate * client_data.channels * (client_data.bps / 8);	// SampleRate * NumChannels * BitsPerSample/8
+			FMTheader.BlockAlign = client_data.channels * (client_data.bps / 8);	// NumChannels * BitsPerSample/8
+			FMTheader.BitsPerSample = client_data.bps;
+			DATAheader.ChunkID[0] = 'd';
+			DATAheader.ChunkID[1] = 'a';
+			DATAheader.ChunkID[2] = 't';
+			DATAheader.ChunkID[3] = 'a';
+			DATAheader.ChunkSize = total_size;
+
+			i = fwrite(&WAVEheader, 1, 12, client_data.fout);
+			if (i != 12) return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;	// write error
+			i = fwrite(&FMTheader, 1, 24, client_data.fout);
+			if (i != 24) return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
+			i = fwrite(&DATAheader, 1, 8, client_data.fout);
+			if (i != 8) return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
+		}
+
+		// write decoded PCM samples
+		switch (client_data.bps)
 		{
-			for (pos = 0; pos < frame->header.blocksize; pos++)
+		case 16:	pcm = new FLAC__byte[frame->header.blocksize * client_data.channels * 2];
+			for (chan = 0; chan < client_data.channels; chan++)
 			{
-				temp = buffer[chan][pos];
-				pcm[client_data.channels * pos * 3 + chan * 3] = (FLAC__byte)temp;
-				temp = temp >> 8;
-				pcm[client_data.channels * pos * 3 + chan * 3 + 1] = (FLAC__byte)temp;
-				temp = temp >> 8;
-				pcm[client_data.channels * pos * 3 + chan * 3 + 2] = (FLAC__byte)temp;
+				for (pos = 0; pos < frame->header.blocksize; pos++)
+				{
+					temp = buffer[chan][pos];
+					pcm[client_data.channels * pos * 2 + chan * 2] = (FLAC__byte)temp;
+					temp = temp >> 8;
+					pcm[client_data.channels * pos * 2 + chan * 2 + 1] = (FLAC__byte)temp;
+				}
 			}
-		}
-		i = fwrite(pcm, client_data.channels * 3, frame->header.blocksize, f);
-		delete[]pcm;
-		if (i != frame->header.blocksize) return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
-		break;
-	}
+			i = fwrite(pcm, client_data.channels * 2, frame->header.blocksize, client_data.fout);
+			delete[]pcm;
+			if (i != frame->header.blocksize) return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
+			break;
 
+		case 24:	pcm = new FLAC__byte[frame->header.blocksize * client_data.channels * 3];
+			for (chan = 0; chan < get_channels(); chan++)
+			{
+				for (pos = 0; pos < frame->header.blocksize; pos++)
+				{
+					temp = buffer[chan][pos];
+					pcm[client_data.channels * pos * 3 + chan * 3] = (FLAC__byte)temp;
+					temp = temp >> 8;
+					pcm[client_data.channels * pos * 3 + chan * 3 + 1] = (FLAC__byte)temp;
+					temp = temp >> 8;
+					pcm[client_data.channels * pos * 3 + chan * 3 + 2] = (FLAC__byte)temp;
+				}
+			}
+			i = fwrite(pcm, client_data.channels * 3, frame->header.blocksize, client_data.fout);
+			delete[]pcm;
+			if (i != frame->header.blocksize) return FLAC__STREAM_DECODER_WRITE_STATUS_ABORT;
+			break;
+		}
+	break;
+
+	// write decoded PCM samples to memory buffer
+	case RENDERTARGET_MEM:
+		switch (client_data.bps)
+		{
+			case 16:
+				for (chan = 0; chan<client_data.channels; chan++)
+				{
+					for (pos = 0; pos<frame->header.blocksize; pos++)
+					{
+						temp = buffer[chan][pos];
+						client_data.buffer_out[client_data.channels*pos * 2 + chan * 2] = (FLAC__byte)temp;
+						temp = temp >> 8;
+						client_data.buffer_out[client_data.channels*pos * 2 + chan * 2 + 1] = (FLAC__byte)temp;
+					}
+				}
+				break;
+
+			case 24:
+				for (chan = 0; chan<client_data.channels; chan++)
+				{
+					for (pos = 0; pos<frame->header.blocksize; pos++)
+					{
+						temp = buffer[chan][pos];
+						client_data.buffer_out[client_data.channels*pos * 3 + chan * 3] = (FLAC__byte)temp;
+						temp = temp >> 8;
+						client_data.buffer_out[client_data.channels*pos * 3 + chan * 3 + 1] = (FLAC__byte)temp;
+						temp = temp >> 8;
+						client_data.buffer_out[client_data.channels*pos * 3 + chan * 3 + 2] = (FLAC__byte)temp;
+					}
+				}
+				break;
+		}
+
+	break;
+	}
+	
 	return FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE;
 }
 
@@ -240,4 +296,106 @@ void libflac_StreamDecoder::metadata_callback(const ::FLAC__StreamMetadata* meta
 void libflac_StreamDecoder::error_callback(::FLAC__StreamDecoderErrorStatus status)
 {
 	// intentionally kept blank
+}
+
+//---------------------------------------------------------------------------------
+// libflac callback functions for metadata handling
+//---------------------------------------------------------------------------------
+size_t encoders::libflac_metadata_read_callback(void* ptr, size_t size, size_t nmemb, ::FLAC__IOHandle handle)
+{
+	//	Parameters
+	//		ptr	The address of the read buffer.
+	//		size	The size of the records to be read.
+	//		nmemb	The number of records to be read.
+	//		handle	The handle to the data source.
+	//
+	//	Return values
+	//		size_t	The number of records read.
+
+	return fread(ptr, size, nmemb, (FILE*)handle);
+}
+
+size_t encoders::libflac_metadata_write_callback(const void* ptr, size_t size, size_t nmemb, ::FLAC__IOHandle handle)
+{
+	//	Parameters
+	//		ptr	The address of the write buffer.
+	//		size	The size of the records to be written.
+	//		nmemb	The number of records to be written.
+	//		handle	The handle to the data source.
+	//
+	//	Return values
+	//		size_t	The number of records written.
+
+	return fwrite(ptr, size, nmemb, (FILE*)handle);
+}
+
+FLAC__int64 encoders::libflac_metadata_tell_callback(::FLAC__IOHandle handle)
+{
+	//	Parameters
+	//		handle	The handle to the data source.
+	//
+	//	Return values
+	//		FLAC__int64	The current position on success, -1 on error.
+
+	/*long long pos;
+
+	if (handle == stdin) return -1;
+	else
+		if ((pos = _ftelli64((FILE*)handle)) < 0) return -1;
+		else return (FLAC__int64)pos;*/
+
+	return _ftelli64((FILE*)handle);
+}
+
+int encoders::libflac_metadata_seek_callback(::FLAC__IOHandle handle, FLAC__int64 offset, int whence)
+{
+	//	Parameters
+	//		handle	The handle to the data source.
+	//		offset	The new position, relative to whence
+	//		whence	SEEK_SET, SEEK_CUR, or SEEK_END
+	//
+	//	Return values
+	//		int	0 on success, -1 on error.
+
+	/*if(handle == stdin) return -1;
+	else
+		switch (whence)
+		{
+			case SEEK_SET:
+				if (_fseeki64((FILE*)handle, (off_t)offset, SEEK_SET) < 0) return -1;
+				else return 0;
+				break;
+			case SEEK_CUR:
+				if (_fseeki64((FILE*)handle, (off_t)offset, SEEK_CUR) < 0) return -1;
+				else return 0;
+				break;
+			case SEEK_END:
+				if (_fseeki64((FILE*)handle, (off_t)offset, SEEK_END) < 0) return -1;
+				else return 0;
+				break;
+		}
+	return -1;*/
+
+	return _fseeki64((FILE*)handle, (off_t)offset, whence);
+}
+
+int encoders::libflac_metadata_eof_callback(::FLAC__IOHandle handle)
+{
+	//	Parameters
+	//		handle	The handle to the data source.
+	//
+	//	Return values
+	//		int	0 if not at end of file, nonzero if at end of file.
+	
+	return feof((FILE*)handle);
+}
+
+int encoders::libflac_metadata_close_callback(::FLAC__IOHandle handle)
+{
+	//	Parameters
+	//		handle	The handle to the data source.
+	//	Return values
+	//		int	0 on success, EOF on error.
+
+	return fclose((FILE*)handle);
 }

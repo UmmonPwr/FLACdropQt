@@ -1,6 +1,6 @@
-#include "FLAC\stream_encoder.h"
 #include "FLAC++\encoder.h"
 #include "FLAC++\decoder.h"
+#include "FLAC++\metadata.h"
 #include "lame.h"
 
 #include <QtWidgets>
@@ -52,6 +52,29 @@
 #define WAV_FORMAT_MULAW		0x0007	// 8 - bit ITU - T G.711 µ - law
 #define WAV_FORMAT_EXTENSIBLE	0xFFFE	// Determined by SubFormat
 
+// positions of the metadata variables in the transfer structure
+#define MD_NUMBER		16			// number of metadata fields
+#define MD_TITLE		0
+#define MD_VERSION		1
+#define MD_ALBUM		2
+#define MD_TRACKNUMBER	3
+#define MD_DISCNUMBER	4
+#define MD_ARTIST		5
+#define MD_PERFORMER	6
+#define MD_COPYRIGHT	7
+#define MD_LICENSE		8
+#define MD_ORGANIZATION	9
+#define MD_DESCRIPTION	10
+#define MD_GENRE		11
+#define MD_DATE			12
+#define MD_LOCATION		13
+#define MD_CONTACT		14
+#define MD_ISRC			15
+
+// for libflac decoder
+#define RENDERTARGET_MEM 0
+#define RENDERTARGET_FILE 1
+
 // libmp3lame CBR encoding bitrates
 const QString LAME_CBRBITRATES_TEXT[] = {
 	"48", "64", "80", "96", "112", "128", "160", "192", "224", "256", "320" };
@@ -100,6 +123,14 @@ private:
 	void flac2mp3();
 	void wav2mp3();
 
+	// libflac callbacks for metadata handling
+	static size_t libflac_metadata_read_callback(void* ptr, size_t size, size_t nmemb, ::FLAC__IOHandle handle);
+	static size_t libflac_metadata_write_callback(const void* ptr, size_t size, size_t nmemb, ::FLAC__IOHandle handle);
+	static FLAC__int64 libflac_metadata_tell_callback(FLAC__IOHandle handle);
+	static int libflac_metadata_eof_callback(::FLAC__IOHandle handle);
+	static int libflac_metadata_seek_callback(::FLAC__IOHandle handle, FLAC__int64 offset, int whence);
+	static int libflac_metadata_close_callback(::FLAC__IOHandle handle);
+
 	// wave file header
 	struct sWAVEheader
 	{
@@ -131,6 +162,13 @@ private:
 	{
 		char ChunkID[4];		// "data"
 		int ChunkSize;			// NumSamples * NumChannels * BitsPerSample/8
+	};
+
+	// structure for metadata transfer
+	struct sMetaData
+	{
+		char* text;
+		bool present;
 	};
 
 	sFLACdropQtSettings settings;
@@ -207,7 +245,10 @@ public:
 
 	unsigned int get_bits_per_sample_clientdata();
 	unsigned int get_blocksize_clientdata();
+	unsigned int get_channels_clientdata();
+	unsigned int get_sample_rate_clientdata();
 	void addOutputFile(FILE* f);
+	void addOutputMem(BYTE* buffer);
 	
 	// callback functions for libFLAC encoder stream handling
 	::FLAC__StreamDecoderReadStatus read_callback(FLAC__byte buffer[], size_t* bytes);
@@ -259,7 +300,8 @@ private:
 	struct sClientData
 	{
 		FILE* fout;
-		//BYTE* buffer_out;
+		BYTE* buffer_out;
+		BYTE rendertarget;
 		FLAC__uint64 total_samples;
 		unsigned int sample_rate;
 		unsigned int channels;
