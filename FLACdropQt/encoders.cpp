@@ -73,7 +73,7 @@ void cScheduler::startEncoding()
 		else emit setProgressbarTotalValue(++countfinishedthreads);	// no thread was started but we progressed in the pathlist
 	}
 
-	// check if at least a thread is running, if not then enable drag&drop
+	// check if at least one thread is running, if not then enable drag&drop
 	threadStarted = false;
 	for (int i = 0; i < OUT_MAX_THREADS; i++)
 		if (thread_status[i] == true) threadStarted = true;
@@ -94,14 +94,13 @@ void cScheduler::startNewThread()
 	if (pathlistPosition == pathList.size()) emit setDrop(true);	// we were not able to start a new thread so we can enable drag&drop
 }
 
-// TODO: check only the actual extension of the file, do not search the entire path string
 // choose which encoder to run based on the path string
 bool cScheduler::SelectEncoder(const QString& droppedfile)
 {
 	bool threadStarted = false;
 
 	// dropped file is WAV
-	if (droppedfile.contains(".wav", Qt::CaseInsensitive))
+	if (droppedfile.endsWith(".wav", Qt::CaseInsensitive))
 	{
 		int thread_slot = 0;
 		while (thread_status[thread_slot] == true) thread_slot++;		// search for an available encoder
@@ -115,7 +114,7 @@ bool cScheduler::SelectEncoder(const QString& droppedfile)
 	}
 
 	// dropped file is FLAC
-	if (droppedfile.contains(".flac", Qt::CaseInsensitive))
+	if (droppedfile.endsWith(".flac", Qt::CaseInsensitive))
 	{
 		int thread_slot = 0;
 		while (thread_status[thread_slot] == true) thread_slot++;		// search for an available encoder

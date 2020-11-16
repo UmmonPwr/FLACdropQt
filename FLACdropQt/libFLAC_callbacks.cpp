@@ -150,7 +150,6 @@ bool libflac_StreamDecoder::eof_callback()
 ::FLAC__StreamDecoderWriteStatus libflac_StreamDecoder::write_callback(const ::FLAC__Frame* frame, const FLAC__int32* const buffer[])
 {
 	UNREFERENCED_PARAMETER(frame);
-	//FILE* f = client_data.fout;
 
 	const FLAC__uint32 total_size = (FLAC__uint32)(client_data.total_samples * client_data.channels * (client_data.bps / 8));
 	size_t i;
