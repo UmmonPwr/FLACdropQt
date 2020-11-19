@@ -1,22 +1,22 @@
 #include "FLACdropQt.h"
 
-// load app settings from ...
+// load app settings using QSettings
 void FLACdropQt::readSettings()
 {
-	// load default values
-	FLACdropQtSettings.OUT_Threads = OUT_THREADS;
-	FLACdropQtSettings.OUT_Type = OUT_TYPE;
-	FLACdropQtSettings.FLAC_EncodingQuality = FLAC_ENCODINGQUALITY;
-	FLACdropQtSettings.FLAC_MD5check = FLAC_MD5CHECK;
-	FLACdropQtSettings.FLAC_Verify = FLAC_VERIFY;
-	FLACdropQtSettings.LAME_InternalQuality = LAME_INTERNALQUALITY;
-	FLACdropQtSettings.LAME_VBRQuality = LAME_VBRQUALITY;
-	FLACdropQtSettings.LAME_EncodingMode = LAME_ENCODINGMODE;
-	FLACdropQtSettings.LAME_CBRBitrate = LAME_CBRBITRATE;
-	FLACdropQtSettings.LAME_Flush = LAME_FLUSH;
-	FLACdropQtSettings.LAME_NoGap = LAME_NOGAP;
+	// load values
+	FLACdropQtSettings.OUT_Type = settings->value("OUT_TYPE", OUT_TYPE).toInt();
+	FLACdropQtSettings.OUT_Threads = settings->value("OUT_THREADS", OUT_THREADS).toInt();
+	FLACdropQtSettings.FLAC_EncodingQuality = settings->value("FLAC_ENCODINGQUALITY", FLAC_ENCODINGQUALITY).toInt();
+	FLACdropQtSettings.FLAC_MD5check = settings->value("FLAC_MD5CHECK", FLAC_MD5CHECK).toBool();
+	FLACdropQtSettings.FLAC_Verify = settings->value("FLAC_VERIFY", FLAC_VERIFY).toBool();
+	FLACdropQtSettings.LAME_InternalQuality = settings->value("LAME_INTERNALQUALITY", LAME_INTERNALQUALITY).toInt();
+	FLACdropQtSettings.LAME_VBRQuality = settings->value("LAME_VBRQUALITY", LAME_VBRQUALITY).toInt();
+	FLACdropQtSettings.LAME_EncodingMode = settings->value("LAME_ENCODINGMODE", LAME_ENCODINGMODE).toInt();
+	FLACdropQtSettings.LAME_CBRBitrate = settings->value("LAME_CBRBITRATE", LAME_CBRBITRATE).toInt();
+	FLACdropQtSettings.LAME_Flush = settings->value("LAME_FLUSH", LAME_FLUSH).toBool();
+	FLACdropQtSettings.LAME_NoGap = settings->value("LAME_NOGAP", LAME_NOGAP).toBool();
 
-	// setup the widget status'
+	// setup the widget status's
 	// main window
 	main_radiobutton_outputtypes[FLACdropQtSettings.OUT_Type]->setChecked(true);
 
@@ -51,7 +51,7 @@ void FLACdropQt::readSettings()
 	}
 }
 
-// write app settings to ...
+// store app settings using QSettings
 void FLACdropQt::writeSettings()
 {
 	// update the global settings with the actual widget values
@@ -73,6 +73,17 @@ void FLACdropQt::writeSettings()
 	FLACdropQtSettings.LAME_CBRBitrate = options_libmp3lame_combobox_cbrbitrate->currentIndex();
 	if (options_libmp3lame_radiobutton_cbr->isChecked() == true) FLACdropQtSettings.LAME_EncodingMode = LAME_ENCODINGMODE_CBR;
 	if (options_libmp3lame_radiobutton_vbr->isChecked() == true) FLACdropQtSettings.LAME_EncodingMode = LAME_ENCODINGMODE_VBR;
+
+	// store settings
+	settings->setValue("OUT_Type", FLACdropQtSettings.OUT_Type);
+	settings->setValue("OUT_Threads", FLACdropQtSettings.OUT_Threads);
+	settings->setValue("FLAC_EncodingQuality", FLACdropQtSettings.FLAC_EncodingQuality);
+	settings->setValue("FLAC_MD5check", FLACdropQtSettings.FLAC_MD5check);
+	settings->setValue("FLAC_Verify", FLACdropQtSettings.FLAC_Verify);
+	settings->setValue("LAME_InternalQuality", FLACdropQtSettings.LAME_InternalQuality);
+	settings->setValue("LAME_VBRQuality", FLACdropQtSettings.LAME_VBRQuality);
+	settings->setValue("LAME_CBRBitrate", FLACdropQtSettings.LAME_CBRBitrate);
+	settings->setValue("LAME_EncodingMode", FLACdropQtSettings.LAME_EncodingMode);
 }
 
 // load an embedded resource

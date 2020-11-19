@@ -91,6 +91,8 @@ private:
 	cScheduler* encoderScheduler;
 	QThread controller;
 
+	QSettings* settings;
+
 	// menu bar
 	QMenu* menu_file;
 	QMenu* menu_log;

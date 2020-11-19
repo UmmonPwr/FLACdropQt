@@ -9,6 +9,8 @@ FLACdropQt::FLACdropQt(QWidget *parent)	: QMainWindow(parent)
 
 	mainWindow = new QWidget;
 	setCentralWidget(mainWindow);
+	settings = new QSettings("Ummon", "FLACdropQt");
+	//settings = new QSettings(QSettings::IniFormat, QSettings::UserScope, "Ummon", "FLACdropQt");
 
 	// create main window layout
 	main_layout = new QVBoxLayout;
