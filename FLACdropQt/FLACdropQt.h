@@ -73,6 +73,8 @@ private slots:
 	void setProgressbarTotalValue(int value);
 	void setDrop(bool state);
 
+	void addLogResult(QString file, int result);
+
 protected:
 	void dragEnterEvent(QDragEnterEvent* event);
 	void dragMoveEvent(QDragMoveEvent* event);
@@ -83,6 +85,7 @@ private:
 	void createActions();
 	void createMenus();
 	void createOptionsWindow();
+	void createLogWindow();
 	void readSettings();
 
 	sFLACdropQtSettings FLACdropQtSettings;	// global settings
@@ -164,6 +167,11 @@ private:
 	QLabel* options_libmp3lame_label_mp3type;
 	QRadioButton* options_libmp3lame_radiobutton_cbr;
 	QRadioButton* options_libmp3lame_radiobutton_vbr;
+
+	// widgets on log window
+	QWidget* logWindow;
+	QGridLayout* log_layout;
+	QTextEdit* log_textbox;
 
 	Ui::FLACdropQtClass ui;
 };

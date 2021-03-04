@@ -150,6 +150,7 @@ void FLACdropQt::createOptionsWindow()
 	connect(FLACdropQt::options_button_close, SIGNAL(released()), optionsWindow, SLOT(hide()));
 	optionsWindow->setLayout(options_layout);
 	optionsWindow->setWindowIcon(*icon_FLACdrop);
+	optionsWindow->setWindowTitle(tr("Options"));
 	optionsWindow->hide();
 }
 

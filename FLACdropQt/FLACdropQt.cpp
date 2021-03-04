@@ -86,6 +86,7 @@ FLACdropQt::FLACdropQt(QWidget *parent)	: QMainWindow(parent)
 	createActions();
 	createMenus();
 	createOptionsWindow();
+	createLogWindow();
 
 	// switch on percentage display at each progressbar
 	for (int i = 0; i < OUT_MAX_THREADS; i++) main_progressbar_threads[i]->setValue(0);

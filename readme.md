@@ -11,7 +11,7 @@ Currently it can convert:
 - from FLAC to MP3
 
 FLACdrop is using the below libraries. Only the headers and the pre-built lib files are included:
-- Qt 5.15.1 ( https://www.qt.io/ )
+- Qt 6.0.1 ( https://www.qt.io/ )
 - libflac 1.3.2 GitHub version ( https://github.com/xiph/flac )
 - libogg 1.3.3 GitHub version ( https://github.com/xiph/ogg )
 - libmp3lame 3.100.2 ( https://lame.sourceforge.io/index.php )

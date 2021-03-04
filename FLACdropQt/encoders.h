@@ -17,32 +17,51 @@
 #define SIZE_RAW_BUFFER 32768		// size of raw audio data buffer for transcoding
 #define MAXMETADATA 1024			// maximum character size of metadata string
 #define MAXFILENAMELENGTH 1024		// maximum size of a file name with full path
-//#define EVENTLOGSIZE 65536			// maximum character size of the event log
 
 #define OUT_MAX_THREADS 8			// maximum number of batch processing threads
 
 // failure codes
 #define ALL_OK						0
-#define FAIL_FILE_OPEN				1
-#define FAIL_WAV_BAD_HEADER			2
-#define FAIL_WAV_UNSUPPORTED		3
-#define FAIL_LIBFLAC_ONLY_16_24_BIT	4
-#define FAIL_LIBFLAC_BAD_HEADER		5
-#define FAIL_LIBFLAC_ALLOC			6
-#define FAIL_LIBFLAC_ENCODE			7
-#define FAIL_LIBFLAC_DECODE			8
-#define FAIL_LIBFLAC_METADATA		9
-#define FAIL_LIBFLAC_RELEASE		10
-#define WARN_LIBFLAC_MD5			11
-#define FAIL_REGISTRY_OPEN			12
-#define FAIL_REGISTRY_WRITE			13
-#define FAIL_REGISTRY_READ			14
-#define FAIL_LAME_ONLY_16_BIT		15
-#define FAIL_LAME_MAX_2_CHANNEL		16
-#define FAIL_LAME_INIT				17
-#define FAIL_LAME_ID3TAG			18
-#define FAIL_LAME_ENCODE			19
-#define FAIL_LAME_CLOSE				20
+#define FAIL_FILE_UNKNOWN			1
+#define FAIL_FILE_OPEN				2
+#define FAIL_WAV_BAD_HEADER			3
+#define FAIL_WAV_UNSUPPORTED		4
+#define FAIL_LIBFLAC_ONLY_16_24_BIT	5
+#define FAIL_LIBFLAC_BAD_HEADER		6
+#define FAIL_LIBFLAC_ALLOC			7
+#define FAIL_LIBFLAC_ENCODE			8
+#define FAIL_LIBFLAC_DECODE			9
+#define FAIL_LIBFLAC_METADATA		10
+#define FAIL_LIBFLAC_RELEASE		11
+#define WARN_LIBFLAC_MD5			12
+#define FAIL_LAME_ONLY_16_BIT		13
+#define FAIL_LAME_MAX_2_CHANNEL		14
+#define FAIL_LAME_INIT				15
+#define FAIL_LAME_ID3TAG			16
+#define FAIL_LAME_ENCODE			17
+#define FAIL_LAME_CLOSE				18
+
+const QString FAIL_TEXT[] = {
+	"OK",													// 0
+	"Unknown file type",									// 1
+	"Failed to open",										// 2
+	"WAV: bad header",										// 3
+	"WAV: unsupported format",								// 4
+	"libflac: only 16 and 24 bit resolution is supported",	// 5
+	"libflac: bad header",									// 6
+	"libflac: encoder / decoder failed to allocate",		// 7
+	"libflac: endoer failure",								// 8
+	"libflac: decoder failure",								// 9
+	"libflac: wrong metadata",								// 10
+	"libflac: failed to release encoder / decoder",			// 11
+	"libflac: MD5 hash mismatch",							// 12
+	"libmp3lame: only 16 bit resulution is supported",		// 13
+	"libmp3lame: max 2 channel files are supported",		// 14
+	"libmp3lame: encoder / decoder failed to allocate",		// 15
+	"libmp3lame: wrong ID3 tag",							// 16
+	"libmp3lame: encoder failure",							// 17
+	"libmp3lame: encoder / decoder failed to release"		// 18
+	};
 
 // WAVE file audio formats
 // http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
@@ -115,7 +134,7 @@ public:
 signals:
 	void setProgressbarLimits(int ID, int min, int max);
 	void setProgressbarValue(int ID, int value);
-	void ThreadFinished(int ID);
+	void ThreadFinished(int ID, int result);
 
 private:
 	void wav2flac();
@@ -194,9 +213,10 @@ signals:
 	void setProgressbarTotalLimits(int min, int max);
 	void setProgressbarTotalValue(int value);
 	void setDrop(bool state);
+	void addLogResult(QString file, int result);
 
 private slots:
-	void ThreadFinished(int ID);
+	void ThreadFinished(int ID, int result);
 	void startNewThread();
 	void startEncoding();
 
@@ -208,6 +228,7 @@ private:
 	sFLACdropQtSettings ActualSettings;
 	encoders* encoder_list[OUT_MAX_THREADS];
 	bool thread_status[OUT_MAX_THREADS];
+	QString thread_file[OUT_MAX_THREADS];
 	int pathlistPosition;
 	int countfinishedthreads;
 };

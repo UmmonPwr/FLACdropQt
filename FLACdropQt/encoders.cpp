@@ -13,6 +13,8 @@ cScheduler::cScheduler(QApplication* gui_thread)
 	connect(this, SIGNAL(setProgressbarTotalLimits(int, int)), gui_window, SLOT(setProgressbarTotalLimits(int, int)));
 	connect(this, SIGNAL(setProgressbarTotalValue(int)), gui_window, SLOT(setProgressbarTotalValue(int)));
 
+	connect(this, SIGNAL(addLogResult(QString, int)), gui_window, SLOT(addLogResult(QString, int)));
+
 	// allocate each encoder object and connect signals to slots
 	for (int i = 0; i < OUT_MAX_THREADS; i++)
 	{
@@ -21,7 +23,7 @@ cScheduler::cScheduler(QApplication* gui_thread)
 
 		connect(encoder_list[i], SIGNAL(setProgressbarLimits(int, int, int)), gui_window, SLOT(setProgressbarLimits(int, int, int)));
 		connect(encoder_list[i], SIGNAL(setProgressbarValue(int, int)), gui_window, SLOT(setProgressbarValue(int, int)));
-		connect(encoder_list[i], SIGNAL(ThreadFinished(int)), this, SLOT(ThreadFinished(int)));
+		connect(encoder_list[i], SIGNAL(ThreadFinished(int, int)), this, SLOT(ThreadFinished(int, int)));
 		connect(encoder_list[i], SIGNAL(finished()), this, SLOT(startNewThread()));
 	}
 }
@@ -36,9 +38,10 @@ void cScheduler::addEncoderSettings(sFLACdropQtSettings encSettings)
 	ActualSettings = encSettings;
 }
 
-void cScheduler::ThreadFinished(int ID)
+void cScheduler::ThreadFinished(int ID, int result)
 {
 	thread_status[ID] = false;
+	emit addLogResult(thread_file[ID], result);
 	emit setProgressbarTotalValue(++countfinishedthreads);
 }
 
@@ -69,7 +72,10 @@ void cScheduler::startEncoding()
 	while ((parallelthreads < allowedthreads) && (pathlistPosition < pathList.size()))
 	{
 		threadStarted = SelectEncoder(pathList.at(pathlistPosition++));
-		if (threadStarted == true) parallelthreads++;
+		if (threadStarted == true)
+		{
+			parallelthreads++;
+		}
 		else emit setProgressbarTotalValue(++countfinishedthreads);	// no thread was started but we progressed in the pathlist
 	}
 
@@ -108,8 +114,10 @@ bool cScheduler::SelectEncoder(const QString& droppedfile)
 		encoder_list[thread_slot]->addFile(droppedfile);
 		encoder_list[thread_slot]->setInputFileType(FILE_TYPE_WAV);
 		thread_status[thread_slot] = true;
-		encoder_list[thread_slot]->start();
 
+		thread_file[thread_slot] = droppedfile;
+		
+		encoder_list[thread_slot]->start();
 		threadStarted = true;
 	}
 
@@ -122,11 +130,14 @@ bool cScheduler::SelectEncoder(const QString& droppedfile)
 		encoder_list[thread_slot]->addFile(droppedfile);
 		encoder_list[thread_slot]->setInputFileType(FILE_TYPE_FLAC);
 		thread_status[thread_slot] = true;
-		encoder_list[thread_slot]->start();
 
+		thread_file[thread_slot] = droppedfile;
+
+		encoder_list[thread_slot]->start();
 		threadStarted = true;
 	}
 
+	if (threadStarted == false) emit addLogResult(droppedfile, FAIL_FILE_UNKNOWN);
 	return threadStarted;
 }
 
@@ -452,7 +463,8 @@ void encoders::wav2flac()
 		delete encoder;
 	}
 
-	emit ThreadFinished(ID);
+	//emit ThreadFinished(ID);
+	emit ThreadFinished(ID, err);
 }
 
 //---------------------------------------------------------------------------------
@@ -603,7 +615,8 @@ void encoders::flac2wav()
 		delete decoder;
 	}
 
-	emit ThreadFinished(ID);
+	//emit ThreadFinished(ID);
+	emit ThreadFinished(ID, err);
 }
 
 //---------------------------------------------------------------------------------
@@ -926,7 +939,8 @@ void encoders::wav2mp3()
 		fclose(fout);
 	}
 
-	emit ThreadFinished(ID);
+	//emit ThreadFinished(ID);
+	emit ThreadFinished(ID, err);
 }
 
 //---------------------------------------------------------------------------------
@@ -1442,5 +1456,6 @@ void encoders::flac2mp3()
 		fclose(fout);
 	}
 
-	emit ThreadFinished(ID);
+	//emit ThreadFinished(ID);
+	emit ThreadFinished(ID, err);
 }
