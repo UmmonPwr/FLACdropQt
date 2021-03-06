@@ -69,21 +69,21 @@ void FLACdropQt::writeSettings()
 
 	// options - libmp3lame
 	FLACdropQtSettings.LAME_InternalQuality = options_libmp3lame_slider_internalquality->value();
-	FLACdropQtSettings.LAME_VBRQuality = options_libmp3lame_slider_internalquality->value();
+	FLACdropQtSettings.LAME_VBRQuality = options_libmp3lame_slider_vbrquality->value();
 	FLACdropQtSettings.LAME_CBRBitrate = options_libmp3lame_combobox_cbrbitrate->currentIndex();
 	if (options_libmp3lame_radiobutton_cbr->isChecked() == true) FLACdropQtSettings.LAME_EncodingMode = LAME_ENCODINGMODE_CBR;
 	if (options_libmp3lame_radiobutton_vbr->isChecked() == true) FLACdropQtSettings.LAME_EncodingMode = LAME_ENCODINGMODE_VBR;
 
 	// store settings
-	settings->setValue("OUT_Type", FLACdropQtSettings.OUT_Type);
-	settings->setValue("OUT_Threads", FLACdropQtSettings.OUT_Threads);
-	settings->setValue("FLAC_EncodingQuality", FLACdropQtSettings.FLAC_EncodingQuality);
-	settings->setValue("FLAC_MD5check", FLACdropQtSettings.FLAC_MD5check);
-	settings->setValue("FLAC_Verify", FLACdropQtSettings.FLAC_Verify);
-	settings->setValue("LAME_InternalQuality", FLACdropQtSettings.LAME_InternalQuality);
-	settings->setValue("LAME_VBRQuality", FLACdropQtSettings.LAME_VBRQuality);
-	settings->setValue("LAME_CBRBitrate", FLACdropQtSettings.LAME_CBRBitrate);
-	settings->setValue("LAME_EncodingMode", FLACdropQtSettings.LAME_EncodingMode);
+	settings->setValue("OUT_TYPE", FLACdropQtSettings.OUT_Type);
+	settings->setValue("OUT_THREADS", FLACdropQtSettings.OUT_Threads);
+	settings->setValue("FLAC_ENCODINGQUALITY", FLACdropQtSettings.FLAC_EncodingQuality);
+	settings->setValue("FLAC_MD5CHECK", FLACdropQtSettings.FLAC_MD5check);
+	settings->setValue("FLAC_VERIFY", FLACdropQtSettings.FLAC_Verify);
+	settings->setValue("LAME_INTERNALQUALITY", FLACdropQtSettings.LAME_InternalQuality);
+	settings->setValue("LAME_VBRQUALITY", FLACdropQtSettings.LAME_VBRQuality);
+	settings->setValue("LAME_CBRBITRATE", FLACdropQtSettings.LAME_CBRBitrate);
+	settings->setValue("LAME_ENCODINGMODE", FLACdropQtSettings.LAME_EncodingMode);
 }
 
 // load an embedded resource
