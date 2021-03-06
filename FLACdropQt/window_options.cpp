@@ -21,7 +21,7 @@ void FLACdropQt::createOptionsWindow()
 
 	// add output group layout
 	options_output_label_threads = new QLabel;
-	options_output_label_threads->setText("Batch processing threads:\n(1-8)");
+	options_output_label_threads->setText("Batch processing threads:");
 	options_output_label_threads->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
 
 	options_output_slider_threads = new QSlider;
@@ -42,7 +42,7 @@ void FLACdropQt::createOptionsWindow()
 
 	// add libflac group layout
 	options_libflac_label_quality = new QLabel;
-	options_libflac_label_quality->setText("Quality:\n(higher is better)\n(1-8)");
+	options_libflac_label_quality->setText("Quality [1-8]:\n(higher is better)\n(recommended: 6)");
 	options_libflac_label_quality->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
 
 	options_libflac_slider_quality = new QSlider;
@@ -68,7 +68,7 @@ void FLACdropQt::createOptionsWindow()
 
 	// add libmp3lame group layout
 	options_libmp3lame_label_internalquality = new QLabel;
-	options_libmp3lame_label_internalquality->setText("Internal encoding quality:\n(lower is better)\n(0-9)");
+	options_libmp3lame_label_internalquality->setText("Internal encoding quality [0-9]:\n(lower is better)\n(recommended: 2)");
 	options_libmp3lame_label_internalquality->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
 
 	options_libmp3lame_slider_internalquality = new QSlider;
@@ -90,7 +90,7 @@ void FLACdropQt::createOptionsWindow()
 	for (int i=0; i<LAME_CBRBITRATES_QUANTITY; i++) options_libmp3lame_combobox_cbrbitrate->insertItem(i, LAME_CBRBITRATES_TEXT[i], LAME_CBRBITRATES[i]);
 
 	options_libmp3lame_label_vbrquality = new QLabel;
-	options_libmp3lame_label_vbrquality->setText("Variable Bit Rate quality (VBR):\n(lower is better)\n(0-9)");
+	options_libmp3lame_label_vbrquality->setText("Variable Bit Rate quality (VBR) [0-9]:\n(lower is better)\n(recommended: 1)");
 	options_libmp3lame_label_vbrquality->setAlignment(Qt::AlignBottom | Qt::AlignLeft);
 
 	options_libmp3lame_slider_vbrquality = new QSlider;

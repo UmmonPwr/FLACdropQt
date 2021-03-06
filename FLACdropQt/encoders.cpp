@@ -463,7 +463,6 @@ void encoders::wav2flac()
 		delete encoder;
 	}
 
-	//emit ThreadFinished(ID);
 	emit ThreadFinished(ID, err);
 }
 
@@ -615,7 +614,6 @@ void encoders::flac2wav()
 		delete decoder;
 	}
 
-	//emit ThreadFinished(ID);
 	emit ThreadFinished(ID, err);
 }
 
@@ -939,7 +937,6 @@ void encoders::wav2mp3()
 		fclose(fout);
 	}
 
-	//emit ThreadFinished(ID);
 	emit ThreadFinished(ID, err);
 }
 
@@ -1456,6 +1453,5 @@ void encoders::flac2mp3()
 		fclose(fout);
 	}
 
-	//emit ThreadFinished(ID);
 	emit ThreadFinished(ID, err);
 }
