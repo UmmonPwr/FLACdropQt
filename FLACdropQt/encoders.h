@@ -68,7 +68,7 @@ const QString FAIL_TEXT[] = {
 #define WAV_FORMAT_PCM			0x0001	// PCM
 #define WAV_FORMAT_IEEE_FLOAT	0x0003	// IEEE float
 #define WAV_FORMAT_ALAW			0x0006	// 8 - bit ITU - T G.711 A - law
-#define WAV_FORMAT_MULAW		0x0007	// 8 - bit ITU - T G.711 µ - law
+#define WAV_FORMAT_MULAW		0x0007	// 8 - bit ITU - T G.711 u - law
 #define WAV_FORMAT_EXTENSIBLE	0xFFFE	// Determined by SubFormat
 
 // positions of the metadata variables in the transfer structure

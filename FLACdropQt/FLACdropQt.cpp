@@ -113,7 +113,7 @@ void FLACdropQt::createActions()
 	//action_menu_exit->setStatusTip(tr("Exit the application"));
 	connect(FLACdropQt::action_menu_exit, &QAction::triggered, this, &QWidget::close);
 
-	action_menu_log = new QAction(tr("&Log"), this);
+	action_menu_log = new QAction(tr("Show &Log"), this);
 	//action_menu_log->setStatusTip(tr("View the events log"));
 	connect(FLACdropQt::action_menu_log, &QAction::triggered, this, &FLACdropQt::dialog_log);
 

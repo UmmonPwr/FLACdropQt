@@ -32,6 +32,15 @@
     <Filter Include="Header Files\libmp3lame">
       <UniqueIdentifier>{7fd09093-d264-4f03-b2c5-3a21d6e5dbf6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\libFLAC_share">
+      <UniqueIdentifier>{c8499181-e38f-49cf-803c-f0d445d29d6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\libFLAC_share\grabbag">
+      <UniqueIdentifier>{bb389db7-a4b4-43be-ab16-358064a47017}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\libOGG">
+      <UniqueIdentifier>{d5d9ee0a-86fa-4c18-9385-4b3889708b8e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -125,6 +134,63 @@
     </ClInclude>
     <ClInclude Include="..\libmp3lame\include\lame.h">
       <Filter>Header Files\libmp3lame</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\alloc.h">
+      <Filter>Header Files\libFLAC_share</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\compat.h">
+      <Filter>Header Files\libFLAC_share</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\endswap.h">
+      <Filter>Header Files\libFLAC_share</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\getopt.h">
+      <Filter>Header Files\libFLAC_share</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\grabbag.h">
+      <Filter>Header Files\libFLAC_share</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\macros.h">
+      <Filter>Header Files\libFLAC_share</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\private.h">
+      <Filter>Header Files\libFLAC_share</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\replaygain_analysis.h">
+      <Filter>Header Files\libFLAC_share</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\replaygain_synthesis.h">
+      <Filter>Header Files\libFLAC_share</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\safe_str.h">
+      <Filter>Header Files\libFLAC_share</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\utf8.h">
+      <Filter>Header Files\libFLAC_share</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\win_utf8_io.h">
+      <Filter>Header Files\libFLAC_share</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\grabbag\cuesheet.h">
+      <Filter>Header Files\libFLAC_share\grabbag</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\grabbag\file.h">
+      <Filter>Header Files\libFLAC_share\grabbag</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\grabbag\picture.h">
+      <Filter>Header Files\libFLAC_share\grabbag</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\grabbag\replaygain.h">
+      <Filter>Header Files\libFLAC_share\grabbag</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libFLAC\include\share\grabbag\seektable.h">
+      <Filter>Header Files\libFLAC_share\grabbag</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libOGG\include\ogg\ogg.h">
+      <Filter>Header Files\libOGG</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libOGG\include\ogg\os_types.h">
+      <Filter>Header Files\libOGG</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

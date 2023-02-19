@@ -189,7 +189,7 @@ void encoders::setInputFileType(int in)
 //---------------------------------------------------------------------------------
 void encoders::wav2flac()
 {
-	libflac_StreamEncoder* encoder = NULL;
+	libflac_StreamEncoder* encoder = nullptr;
 	FILE* fin, *fout;
 	int err = ALL_OK;
 

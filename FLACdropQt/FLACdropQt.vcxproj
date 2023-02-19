@@ -50,11 +50,11 @@
     <Import Project="$(QtMsBuild)\qt_defaults.props" />
   </ImportGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <QtInstall>6.2.3_msvc2019_64</QtInstall>
+    <QtInstall>6.4.2_msvc2019_64</QtInstall>
     <QtModules>core;gui;widgets</QtModules>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <QtInstall>6.2.3_msvc2019_64</QtInstall>
+    <QtInstall>6.4.2_msvc2019_64</QtInstall>
     <QtModules>core;gui;widgets</QtModules>
   </PropertyGroup>
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.props')">
@@ -67,15 +67,15 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
-      <AdditionalIncludeDirectories>$(SolutionDir)libFLAC\include;$(SolutionDir)libmp3lame\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libFLAC\include;$(SolutionDir)libmp3lame\include;$(SolutionDir)libOGG\include\ogg;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <OutputFile>$(OutDir)\$(ProjectName).exe</OutputFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)libFLAC\lib\x64\Debug;$(SolutionDir)libmp3lame\lib\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libFLAC_dynamic.lib;libFLAC++_dynamic.lib;libmp3lame.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)libFLAC\lib\x64\Debug;$(SolutionDir)libmp3lame\lib\x64\Debug;$(SolutionDir)libOGG\lib\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>FLAC.lib;FLAC++.lib;libmp3lame.lib;libogg.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -84,15 +84,15 @@
       <DebugInformationFormat />
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
-      <AdditionalIncludeDirectories>$(SolutionDir)libFLAC\include;$(SolutionDir)libmp3lame\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libFLAC\include;$(SolutionDir)libmp3lame\include;$(SolutionDir)libOGG\include\ogg;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <OutputFile>$(OutDir)\$(ProjectName).exe</OutputFile>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)libFLAC\lib\x64\Release;$(SolutionDir)libmp3lame\lib\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libFLAC_dynamic.lib;libFLAC++_dynamic.lib;libmp3lame.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)libFLAC\lib\x64\Release;$(SolutionDir)libmp3lame\lib\x64\Release;$(SolutionDir)libOGG\lib\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>FLAC.lib;FLAC++.lib;libmp3lame.lib;libogg.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -130,7 +130,26 @@
     <ClInclude Include="..\libFLAC\include\FLAC\stream_decoder.h" />
     <ClInclude Include="..\libFLAC\include\FLAC\stream_encoder.h" />
     <QtMoc Include="encoders.h" />
+    <ClInclude Include="..\libFLAC\include\share\alloc.h" />
+    <ClInclude Include="..\libFLAC\include\share\compat.h" />
+    <ClInclude Include="..\libFLAC\include\share\endswap.h" />
+    <ClInclude Include="..\libFLAC\include\share\getopt.h" />
+    <ClInclude Include="..\libFLAC\include\share\grabbag.h" />
+    <ClInclude Include="..\libFLAC\include\share\grabbag\cuesheet.h" />
+    <ClInclude Include="..\libFLAC\include\share\grabbag\file.h" />
+    <ClInclude Include="..\libFLAC\include\share\grabbag\picture.h" />
+    <ClInclude Include="..\libFLAC\include\share\grabbag\replaygain.h" />
+    <ClInclude Include="..\libFLAC\include\share\grabbag\seektable.h" />
+    <ClInclude Include="..\libFLAC\include\share\macros.h" />
+    <ClInclude Include="..\libFLAC\include\share\private.h" />
+    <ClInclude Include="..\libFLAC\include\share\replaygain_analysis.h" />
+    <ClInclude Include="..\libFLAC\include\share\replaygain_synthesis.h" />
+    <ClInclude Include="..\libFLAC\include\share\safe_str.h" />
+    <ClInclude Include="..\libFLAC\include\share\utf8.h" />
+    <ClInclude Include="..\libFLAC\include\share\win_utf8_io.h" />
     <ClInclude Include="..\libmp3lame\include\lame.h" />
+    <ClInclude Include="..\libOGG\include\ogg\ogg.h" />
+    <ClInclude Include="..\libOGG\include\ogg\os_types.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
